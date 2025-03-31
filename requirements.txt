@@ -1,0 +1,10 @@
+openai==0.28.0
+requests
+pyyaml
+pandas
+scikit-learn
+matplotlib
+seaborn
+scipy
+nltk
+argparse

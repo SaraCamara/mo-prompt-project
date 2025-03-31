@@ -1,0 +1,23 @@
+[
+  {
+    "model": "maritalk",
+    "strategy": "few-shot",
+    "accuracy": 0.95,
+    "num_tokens": 15,
+    "prompt": "Avalie o sentimento geral da opinião apresentada e indique se é positiva ou negativa."
+  },
+  {
+    "model": "maritalk",
+    "strategy": "few-shot",
+    "accuracy": 0.94,
+    "num_tokens": 13,
+    "prompt": "Classifique o sentimento da opinião a seguir como sendo positivo ou negativo."
+  },
+  {
+    "model": "maritalk",
+    "strategy": "few-shot",
+    "accuracy": 0.93,
+    "num_tokens": 11,
+    "prompt": "Determine se a crítica expressa uma avaliação favorável ou desfavorável."
+  }
+]

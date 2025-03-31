@@ -174,3 +174,30 @@ cython_debug/
 .vscode/
 config/credentials.yaml
 #logs/
+
+# Configurações e chaves de API
+config/credentials.yaml
+
+# Resultados e logs
+#logs/
+#*.csv
+
+# Dados
+data/imdb_pt_subset.csv
+
+# Notebooks Jupyter temporários
+*.ipynb_checkpoints
+
+# Cache de Python
+__pycache__/
+*.py[cod]
+*.so
+
+# Ambientes virtuais
+.venv/
+env/
+venv/
+
+# Arquivos do sistema
+.DS_Store
+Thumbs.db

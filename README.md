@@ -11,18 +11,29 @@ Este projeto investiga a otimização evolutiva de prompts aplicados a **tarefas
 
 emo-prompt-project/
 ├── config/
-│ ├── credentials.yaml                   # <--- Chaves de API (não versionado)
-│ └── experiment_settings.yaml           # <--- Modelos, estratégias e paths
-├── dataset/
-│ ├── imdb_notebook.ipynb
-│ └── imdb_pt_subset.csv                 # <--- Subconjunto do IMDB pt (Hugging Face)
+│   ├── credentials.yaml                # Chaves da API: OpenAI, Sabia
+│   └── experiment_settings.yaml        # Modelos, estratégias, top_k, etc.
+│
+├── data/
+│   ├── imdb_pt_subset.csv              # Dataset principal
+│   └── initial_prompts.txt             # Prompts iniciais (1 por linha)
+│
+│
 ├── notebooks/
-│ └── logs/
-│       └── results_model_strategy.csv    # <--- Resultados parciais por cenário
-│ └── evo_prompt_pt_classification.ipynb
+│   └── evo_prompt_pt_classification.ipynb  # Notebook de referência e exploração
+│
+├── scripts/
+│   ├── logs/
+│   │   ├── results_{model}_{strategy}.csv  # Resultados por cenário
+│   │   └── final_results_{model}.csv       # Agregador final
+│   ├── prepare_imdb_pt_subset.py       # Utilitário para gerar o subset (opcional)
+│   ├── inferencia.py                   # Script principal de execução de cenários
+│   └── utils.py                        # Funções compartilhadas (prompts, avaliação, geração, etc.)
+│
+├── requirements.txt                    # Bibliotecas do projeto
+├── main.py                             # Instala dependências e executa inferência
 ├── .gitignore
 └── README.md
-
 
 ---
 
