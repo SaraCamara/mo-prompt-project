@@ -1,0 +1,10 @@
+Avalie o sentimento desta crítica de filme e classifique-a como 'positiva', 'negativa' ou 'neutra'.
+Determine se a opinião expressa na crítica a seguir reflete um sentimento positivo ou negativo sobre o filme.
+Classifique o tom geral desta análise de filme como sendo 'positivo', 'negativo' ou 'neutro'.
+Decida se a crítica abaixo expressa uma visão favorável ou desfavorável do filme.
+Analise o texto da crítica e determine se ela transmite um sentimento de aprovação ou desaprovação.
+Determine a polaridade da crítica do filme: a opinião expressa é positiva ou negativa?
+Interprete o sentimento desta crítica e indique se o autor está elogiando ou criticando o filme.
+Classifique o sentimento do texto a seguir como "positivo" ou "negativo".
+Determine se a crítica expressa uma avaliação favorável ou desfavorável.
+Avalie o sentimento geral da opinião apresentada e indique se é positiva ou negativa.

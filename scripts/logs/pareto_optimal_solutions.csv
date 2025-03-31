@@ -1,0 +1,4 @@
+model,strategy,prompt,accuracy,f1,num_tokens
+maritalk,few-shot,Avalie o sentimento geral da opinião apresentada e indique se é positiva ou negativa.,0.95,0.9504950495049505,15
+maritalk,few-shot,Classifique o sentimento da opinião a seguir como sendo positivo ou negativo.,0.94,0.9411764705882352,13
+maritalk,few-shot,Determine se a crítica expressa uma avaliação favorável ou desfavorável.,0.93,0.9306930693069309,11
