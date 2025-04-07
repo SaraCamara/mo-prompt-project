@@ -1,0 +1,21 @@
+prompt,accuracy,f1,num_tokens
+"Classifique o sentimento desta crítica, indicando se a opinião expressa é positiva ou negativa em relação ao filme.",0.95,0.9504950495049505,20
+Determine se a crítica expressa uma avaliação favorável ou desfavorável.,0.94,0.9411764705882353,11
+Determine a polaridade da crítica do filme: a opinião expressa é positiva ou negativa?,0.93,0.9320388349514563,16
+Interprete o sentimento desta crítica e indique se o autor está elogiando ou criticando o filme.,0.93,0.9320388349514563,17
+Avalie o sentimento geral da opinião apresentada e indique se é positiva ou negativa.,0.93,0.9306930693069307,15
+Determine se a opinião expressa na crítica a seguir reflete um sentimento positivo ou negativo sobre o filme.,0.93,0.9306930693069307,19
+"Classifique o sentimento do texto a seguir como ""positivo"" ou ""negativo"".",0.93,0.9292929292929293,16
+Analise o texto da crítica e determine se ela transmite um sentimento de aprovação ou desaprovação.,0.92,0.9230769230769231,17
+"Classifique o sentimento desta opinião sobre o filme, indicando se é uma avaliação positiva ou negativa.",0.92,0.9230769230769231,18
+Classifique a opinião expressa nesta crítica de filme como positiva ou negativa.,0.92,0.9215686274509803,13
+Decida se a crítica abaixo expressa uma visão favorável ou desfavorável do filme.,0.92,0.9215686274509803,14
+"Classifique o tom geral desta análise de filme como sendo 'positivo', 'negativo' ou 'neutro'.",0.92,0.9215686274509803,19
+"Classifique o sentimento desta avaliação, indicando se a opinião expressa é favorável ou desfavorável em relação ao filme.",0.92,0.9215686274509803,20
+"Classifique o sentimento desta avaliação do filme, indicando se a opinião expressa é positiva ou negativa.",0.91,0.9142857142857143,18
+"Classifique o sentimento desta avaliação de filme como positivo ou negativo, com base na opinião expressa.",0.9,0.9038461538461539,18
+"Classifique a opinião expressa nesta crítica de filme como positiva ou negativa, identificando o sentimento predominante.",0.89,0.8952380952380953,18
+"Classifique o sentimento desta crítica de filme como positivo ou negativo, indicando se a opinião expressa é de aprovação ou desaprovação.",0.89,0.8932038834951457,23
+Analise a crítica a seguir e classifique o sentimento expresso como positivo ou negativo em relação ao filme.,0.86,0.8653846153846154,19
+"Avalie o sentimento desta crítica de filme e classifique-a como 'positiva', 'negativa' ou 'neutra'.",0.79,0.7920792079207921,19
+"Classifique o sentimento desta avaliação do filme como sendo positivo ou negativo, com base na opinião expressa.",0.89,0.8952380952380953,19
