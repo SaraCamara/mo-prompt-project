@@ -17,7 +17,7 @@ def install_requirements():
 
 def execute_test(modelo, arquivo_csv):
     """Executa o script de inferência com o modelo e o CSV de testes."""
-    script_name = "scripts/inferencia.py"
+    script_name = "scripts_evo/inferencia.py"
 
     if not os.path.exists(script_name):
         print(f"[✗] Script {script_name} não encontrado.")

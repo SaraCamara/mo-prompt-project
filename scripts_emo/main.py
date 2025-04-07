@@ -17,7 +17,7 @@ def install_requirements():
 
 def execute_test(modelo, arquivo_csv):
     """Executa o script de inferência com o modelo e o CSV de testes."""
-    script_name = "scripts/inferencia.py"
+    script_name = "scripts_emo/inferencia.py"
 
     if not os.path.exists(script_name):
         print(f"[✗] Script {script_name} não encontrado.")
@@ -31,5 +31,5 @@ def execute_test(modelo, arquivo_csv):
 
 if __name__ == "__main__":
     install_requirements()
-    execute_test("maritalk", "data/imdb_pt_subset.csv")
+    execute_test("gemma:2b", "data/imdb_pt_subset.csv")
     #execute_test("maritalk", "data/imdb_pt_subset.csv")
