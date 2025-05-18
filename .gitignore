@@ -179,11 +179,11 @@ config/credentials.yaml
 config/credentials.yaml
 
 # Resultados e logs
-#logs/
-#*.csv
+logs/
+# *.csv
 
 # Dados
-data/imdb_pt_subset.csv
+#data/imdb_pt_subset.csv
 
 # Notebooks Jupyter temporários
 *.ipynb_checkpoints
