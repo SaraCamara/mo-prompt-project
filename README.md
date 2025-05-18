@@ -2,15 +2,19 @@
 ---
 [WIP]
 
-### Evolutionary-Multiobjective-Optimization Prompt Project
+### Projeto de otimização de prompts com abordagem multiobjetivo e evolutiva
 
-Este projeto investiga a otimização evolutiva de prompts aplicados a **tarefas de classificação de sentimento em português**, utilizando **modelos de linguagem natural (LLMs)** e diferentes estratégias de prompting. Os primeiros testes realizados são inspirados na estrutura do [EvoPrompt (ICLR 2024)](https://arxiv.org/pdf/2309.08532), o projeto realiza a evolução de prompts de forma automatizada, com geração orientada por LLMs e avaliação multi-modelo.
+Este projeto investiga a otimização evolutiva de prompts aplicados a tarefas de classificação de sentimento em português, utilizando modelos de linguagem natural (LLMs) e diferentes estratégias de prompting. A função de otimização aplicada busca maximização da acurácia e minimização da quantidade de tokens utilizados.
 
 ## Estrutura de Pastas
+
 - `config/`: configurações de experimentos e chaves de API
 - `data/`: dataset e prompts iniciais
-- `logs/`: resultados intermediários e finais
+- `logs/`: resultados intermediários
+- `results/`: notebooks avaliações dos resultados
 - `scripts/`: scripts principais
+- `.gitignore`: arquivos ignorados
+- `README.md`: descrição do projeto
 - `requirements.txt`: dependências
 
 ### Resumo Visual da Estrutura
@@ -24,8 +28,14 @@ emo-prompt-project/
 │   ├── imdb_pt_subset.csv
 │   └── initial_prompts.txt
 ├── logs/
-│   ├── results_{model}_{strategy}.csv
-│   └── final_results_{model}.csv
+│   ├── emo/
+│   │   ├── {model}_{strategy}/
+│   │   │   └── final_results.csv
+│   ├── evo/
+│   │   ├── {model}_{strategy}/
+│   │   │   └── final_results.csv
+├── results/
+│   └── notebooks.ipynb
 ├── scripts/
 │   ├── main.py
 │   ├── mono_evolution.py
@@ -36,106 +46,141 @@ emo-prompt-project/
 └── .gitignore
 ```
 
+### Hiperparâmetros
+
+
+| Nome              | Valor |
+|-------------------|-------|
+| `top_k`           | 10    |
+| `multiobjective`  | true  |
+| `max_generations` | 10    |
+| `population_size` | 10    |
+| `imdb_pt_subset`  | 100   |
+
+
 ---
 
-## Como Executar
+## Reprodutibilidade
 
-### 1. Instalação de Dependências
+### Replicabilidade:
+Instruções para o estudo ser reproduzido utilizando os mesmos métodos e obtendo resultados semelhantes.
+
+* Arquivo `credential.yaml` não presente no projeto publicado segue o seguinte template em `config/`:
+
+```python
+# Configuração da API do GPT-4o Mini
+openai_api_key: "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+openai_api_base: "https://api.openai.com/v1"
+
+# Configuração da API do Sabiá
+sabia_api_key: "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+sabia_url: "https://chat.maritaca.ai/api/chat/inference"
+```
+
+#### 1. Instalação de dependências e execução
 
 ```bash
 python -m venv .venv
 source .venv/bin/activate
-pip install -r requirements.txt
 ```
-
-### 2. Execução do Algoritmo Monoobjetivo (Acurácia)
 
 ```bash
-python scripts/main_evo.py
+python scripts/main.py
 ```
 
-### 3. Execução do Algoritmo Multiobjetivo (Acurácia + Tokens)
+#### 2. Seleção de algoritmo, modelo e estratégia
 
 ```bash
-python scripts/main_emo.py
+[>] Selecione estratégia de otimização: 
+0) Monoobjetivo
+1) Multiobjetivo
+
+[>] Selecione modelo avaliador:
+0) gemma:2b
+1) deepseek
+2) sabiazinho
+
+[>] Selecione estratégia de prompt:
+0) Zero-shot
+1) Few-Shot
+2) CoT
 ```
 
----
+### Estabilidade:
+Instruções para consistência dos resultados em diferentes contextos ou situações. Para aplicação do estudo em outros contextos, tarefas, datasets, modelos de LLM, etc devem se atentar as alterações necessárias em:
 
-## Hiperparâmetros
-
-| Nome              | Valor |
-|-------------------|-------|
-| `generations`     | 10    |
-| `population_size` | 10    |
-| `dev_sample`      | 50    |
-| `top_k`           | 3     |
-
-> O processo de evolução é realizado por 1 ciclo no teste atual. Pode ser expandido conforme performance.
+* Dataset: repositório `data/` e dataset_path em `experimentals_setting.yaml`.
+* Prompts iniciais: repositório `data/` .
+* Template de prompts: repositório `config/` em `experimentals_setting.yaml`.
+* Modelos LLM usados: repositório `config/`  em `experimentals_setting.yaml`, `credentials.yaml` e, repositório `scripts/` funções em `utils.py`.
 
 ---
 
-## Visualização dos Resultados
-
-- Visualizar fronteiras de Pareto.
-- Comparar estratégias de prompting.
-- Analisar acurácia × custo computacional (tokens).
-
----
-
-
-## Testes Iniciais
+## Experimentos
 
 ### Tarefa:
 
-**Classificação binária de sentimento** sobre resenhas de filmes (positivo ou negativo).
+Classificação binária de sentimento sobre resenhas de filmes (positivo ou negativo).
 
-### Estratégias de Prompting:
-- `zero-shot`
-- `few-shot`
-- `chain-of-thought (CoT)`
+#### Testes realizados:
 
-### Modelos de Avaliação:
-- [`maritalk`](https://www.maritaca.ai/) (modelo Sabiazinho-3 via API)
-- `deepseek` (mock/local)
-- `llama` (mock/local)
+```mermaid
+graph LR;
+subgraph Estratégia de otimização
+    Monoobjetiva-EvoPrompt
+    Multiobjetiva-EmoPrompt
+    end
+```
 
-### Modelo de Evolução:
-- [`GPT-4o Mini`](https://openai.com/index/gpt-4o-mini-advancing-cost-efficient-intelligence) — utilizado como operador de mutação e geração de novos prompts
+```mermaid
+graph LR;
 
----
+subgraph Modelos de avaliação  
+    gemma:2b
+    deepseek
+    sabiazinho3
+    end
 
-## Experimentos: EvoPrompt × Maritalk
+subgraph Estratégia de prompting
+    zero-shot
+    few-shot
+    cot
+    end
 
-### Teste 1a: Estratégia `zero-shot`
-- Modelo: **Sabiazinho-3 (Maritalk)**
-- Estratégia: Instrução direta para classificação binária
-- Prompt base: 10 variações em português
+ gemma:2b & deepseek & sabiazinho3 ------> zero-shot & few-shot & cot; 
+```
 
-**Results**:  
-→ `logs/results_maritalk_zero-shot.csv`
+**Modelo de Evolução:**
 
----
-
-### Teste 1b: Estratégia `few-shot`
-- Modelo: **Sabiazinho-3 (Maritalk)**
-- Estratégia: 2 exemplos + instrução
-
-**Results**:  
-→ `logs/results_maritalk_few-shot.csv`
+- `GPT-4o Mini` (via API) — utilizado como operador de mutação e geração de novos prompts
 
 ---
 
-### Teste 1c: Estratégia `CoT` (Chain-of-Thought)
-- Modelo: **Sabiazinho-3 (Maritalk)**
-- Estratégia: Instrução + raciocínio passo a passo
+## Testes Iniciais
 
-**Results**:  
-→ `logs/results_maritalk_cot.csv`
+Os primeiros testes realizados foram inspirados na estrutura do [EvoPrompt (ICLR 2024)](https://arxiv.org/pdf/2309.08532), o projeto realiza a evolução de prompts de forma automatizada, com geração orientada por LLMs e avaliação multi-modelo.
 
 ---
 
-> Os próximos experimentos com `llama` e `deepseek` seguirão a mesma estrutura e protocolo.
+## Experimentos:
+
+### 1. EvoPrompt × Gemma:2b
+
+a. Estratégia `zero-shot`
+
+    Resulados iniciais: `logs/evo/gemma2b_zero-shot/`
+
+b. Estratégia `few-shot`
+
+    Resulados iniciais: `logs/evo/gemma2b_few-shot/`
+
+c: Estratégia `CoT` (Chain-of-Thought)
+
+    Resulados iniciais:  `logs/evo/gemma2b_cot./`
+
+---
+
+...
 
 ---
 
