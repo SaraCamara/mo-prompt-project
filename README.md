@@ -1,55 +1,93 @@
 # emo-prompt-project
+---
+[WIP]
 
 ### Evolutionary-Multiobjective-Optimization Prompt Project
 
-Este projeto investiga a otimização evolutiva de prompts aplicados a **tarefas de classificação de sentimento em português**, utilizando modelos de linguagem natural e diferentes estratégias de prompting. Os primeiros testes realizados são inspirados na estrutura do [EvoPrompt (ICLR 2024)](https://arxiv.org/pdf/2309.08532), o projeto realiza a evolução de prompts de forma automatizada, com geração orientada por LLMs e avaliação multi-modelo.
+Este projeto investiga a otimização evolutiva de prompts aplicados a **tarefas de classificação de sentimento em português**, utilizando **modelos de linguagem natural (LLMs)** e diferentes estratégias de prompting. Os primeiros testes realizados são inspirados na estrutura do [EvoPrompt (ICLR 2024)](https://arxiv.org/pdf/2309.08532), o projeto realiza a evolução de prompts de forma automatizada, com geração orientada por LLMs e avaliação multi-modelo.
 
----
+## Estrutura de Pastas
+- `config/`: configurações de experimentos e chaves de API
+- `data/`: dataset e prompts iniciais
+- `logs/`: resultados intermediários e finais
+- `scripts/`: scripts principais
+- `requirements.txt`: dependências
 
-## Estrutura do Projeto
+### Resumo Visual da Estrutura
 
-
+```
 emo-prompt-project/
 ├── config/
-│   ├── credentials.yaml                # Chaves da API: OpenAI, Sabia
-│   └── experiment_settings.yaml        # Modelos, estratégias, top_k, etc.
-│
+│   ├── credentials.yaml
+│   └── experiment_settings.yaml
 ├── data/
-│   ├── imdb_pt_subset.csv              # Dataset principal
-│   └── initial_prompts.txt             # Prompts iniciais (1 por linha)
-│
-│
-├── notebooks/
-│   └── evo_prompt_pt_classification.ipynb  # Notebook de referência e exploração
-│
+│   ├── imdb_pt_subset.csv
+│   └── initial_prompts.txt
+├── logs/
+│   ├── results_{model}_{strategy}.csv
+│   └── final_results_{model}.csv
 ├── scripts/
-│   ├── logs/
-│   │   ├── results_{model}_{strategy}.csv  # Resultados por cenário
-│   │   └── final_results_{model}.csv       # Agregador final
-│   ├── prepare_imdb_pt_subset.py       # Utilitário para gerar o subset (opcional)
-│   ├── inferencia.py                   # Script principal de execução de cenários
-│   └── utils.py                        # Funções compartilhadas (prompts, avaliação, geração, etc.)
-│
-├── requirements.txt                    # Bibliotecas do projeto
-├── main.py                             # Instala dependências e executa inferência
-├── .gitignore
-└── README.md
+│   ├── main.py
+│   ├── mono_evolution.py
+│   ├── multi_evolution.py  
+│   └── utils.py
+├── requirements.txt
+├── README.md
+└── .gitignore
+```
 
 ---
 
-![Python 3.x](https://img.shields.io/badge/python-3.x-green.svg)
+## Como Executar
 
-Notebook em Jupyter/IPython sobre otimização evolutiva multiobjetivo de prompts com LLMs.
+### 1. Instalação de Dependências
 
-> **Notas:**
-> - Escrito em Python 3.x  
-> - Veja [`requirements.txt`](./requirements.txt) para dependências
+```bash
+python -m venv .venv
+source .venv/bin/activate
+pip install -r requirements.txt
+```
+
+### 2. Execução do Algoritmo Monoobjetivo (Acurácia)
+
+```bash
+python scripts/main_evo.py
+```
+
+### 3. Execução do Algoritmo Multiobjetivo (Acurácia + Tokens)
+
+```bash
+python scripts/main_emo.py
+```
 
 ---
+
+## Hiperparâmetros
+
+| Nome              | Valor |
+|-------------------|-------|
+| `generations`     | 10    |
+| `population_size` | 10    |
+| `dev_sample`      | 50    |
+| `top_k`           | 3     |
+
+> O processo de evolução é realizado por 1 ciclo no teste atual. Pode ser expandido conforme performance.
+
+---
+
+## Visualização dos Resultados
+
+- Visualizar fronteiras de Pareto.
+- Comparar estratégias de prompting.
+- Analisar acurácia × custo computacional (tokens).
+
+---
+
 
 ## Testes Iniciais
 
 ### Tarefa:
+
 **Classificação binária de sentimento** sobre resenhas de filmes (positivo ou negativo).
 
 ### Estratégias de Prompting:
@@ -64,19 +102,6 @@ Notebook em Jupyter/IPython sobre otimização evolutiva multiobjetivo de prompt
 
 ### Modelo de Evolução:
 - [`GPT-4o Mini`](https://openai.com/index/gpt-4o-mini-advancing-cost-efficient-intelligence) — utilizado como operador de mutação e geração de novos prompts
-
----
-
-## Hiperparâmetros
-
-| Nome              | Valor |
-|-------------------|-------|
-| `generations`     | 1     | -> 10 
-| `population_size` | 10    |
-| `dev_sample`      | 50    |
-| `top_k`           | 3     |
-
-> O processo de evolução é realizado por 1 ciclo no teste atual. Pode ser expandido conforme performance.
 
 ---
 
@@ -112,4 +137,9 @@ Notebook em Jupyter/IPython sobre otimização evolutiva multiobjetivo de prompt
 
 > Os próximos experimentos com `llama` e `deepseek` seguirão a mesma estrutura e protocolo.
 
-[WIP]
+---
+
+##  Referências
+
+- Guo et al., 2024. *Connecting Large Language Models with Evolutionary Algorithms* (ICLR)
+- Baumann & Kramer, 2024. *EMO-Prompts: Evolutionary Multi-Objective Prompt Optimization*
