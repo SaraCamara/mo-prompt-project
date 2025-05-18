@@ -180,10 +180,10 @@ config/credentials.yaml
 
 # Resultados e logs
 logs/
-*.csv
+# *.csv
 
 # Dados
-data/imdb_pt_subset.csv
+#data/imdb_pt_subset.csv
 
 # Notebooks Jupyter temporários
 *.ipynb_checkpoints
