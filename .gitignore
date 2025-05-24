@@ -173,14 +173,36 @@ cython_debug/
 #
 .vscode/
 config/credentials.yaml
-#logs/
+
 
 # Configurações e chaves de API
 config/credentials.yaml
 
 # Resultados e logs
 logs/
-# *.csv
+*.csv
+*.ipynb
+
+#multi
+# logs/emo/deepseek/
+# logs/emo/gemma/few-shot/
+# logs/emo/gemma/few-shot2/
+# logs/emo/gemma/zero-shot/
+# logs/emo/gemma/zero-shot2/
+# logs/emo/gemma/cot/
+# logs/emo/sabiazinho/few-shot/
+# logs/emo/sabiazinho/cot/
+# logs/emo/sabiazinho/zero-shot/
+# logs/emo/sabiazinho/zero-shot-2/
+# #mono
+# logs/evo/deepseek/
+# logs/evo/gemma/few-shot/
+# logs/evo/gemma/cot/
+# logs/evo/gemma/zero-shot/
+# logs/evo/sabiazinho/few-shot/
+# logs/evo/sabiazinho/cot/
+# logs/evo/sabiazinho/zero-shot/
+
 
 # Dados
 #data/imdb_pt_subset.csv
