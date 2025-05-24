@@ -11,10 +11,8 @@ from utils import load_credentials_from_yaml, load_settings
 # Instalação de dependências
 def install_requirements():
     requirements_file = "requirements.txt"
-    print("[main] Verificando dependências.")
     if os.path.exists(requirements_file):
         try:
-            print(f"[main]  Instalando dependências do arquivo: {requirements_file}")
             subprocess.check_call([sys.executable, "-m", "pip", "install", "-r", requirements_file])
             print("[main] Dependências instaladas com sucesso.")
         except subprocess.CalledProcessError as e:
@@ -38,9 +36,6 @@ def get_validated_numerical_input(prompt_message, num_options):
             print("[main] Entrada inválida. Por favor, insira um número.")
 
 if __name__ == "__main__":
-    print("\n[main] [ Início da Execução ]\n")
-    print("\n[main] [>] Instalação de dependências e carregamento de configurações \n")
-
     install_requirements()
     credentials = load_credentials_from_yaml("config/credentials.yaml") 
     if not credentials:
@@ -55,16 +50,16 @@ if __name__ == "__main__":
         sys.exit(1)
     print("[main] [✓] Configurações principais carregadas e processadas.")
 
-
     print("\n\n[main] [>] Selecione estratégia de otimização:\n  0) Monoobjetivo\n  1) Multiobjetivo")
     while True:
         optimization_type_input = input("Digite o número da opção desejada (0 ou 1): ")
         if optimization_type_input in ["0", "1"]:
-            is_multiobjective = optimization_type_input == "1"
+            is_multiobjective = optimization_type_input == "1" 
             break
         else:
             print("[main] Opção inválida. Digite 0 ou 1.")
     config["multiobjective_run"] = is_multiobjective
+    objective_name = "emo" if is_multiobjective else "evo"
     print(f"[main] Tipo de otimização selecionado: [{'Multiobjetivo' if is_multiobjective else 'Monoobjetivo'}]")    
 
 
@@ -109,8 +104,7 @@ if __name__ == "__main__":
 
     config["strategies"] = [selected_strategy_config]
 
-    print("\n\n[main] [>] Carregamento do dataset")
-    dataset_path = config.get("dataset_path", "data/imdb_pt_subset.csv") # Pega do config ou usa default
+    dataset_path = config.get("dataset_path", "data/imdb_pt_subset.csv")
     if not os.path.exists(dataset_path):
         print(f"[main] Arquivo de dataset '{dataset_path}' não encontrado. Verifique 'experiment_settings.yaml'. Encerrando.")
         sys.exit(1)
@@ -123,9 +117,9 @@ if __name__ == "__main__":
 
 
     print("\n\n[main] [>] Carregamento da população inicial")
-    prompts_path = "data/initial_prompts.txt" # Mantendo este caminho fixo por enquanto
+    prompts_path = "data/initial_prompts.txt" 
     if os.path.exists(prompts_path):
-        with open(prompts_path, "r", encoding="utf-8") as f: # Adicionado encoding
+        with open(prompts_path, "r", encoding="utf-8") as f:
             initial_prompts = [line.strip() for line in f if line.strip()]
         if not initial_prompts:
             print(f"[main] Arquivo de prompts '{prompts_path}' está vazio. Encerrando.")
@@ -136,12 +130,11 @@ if __name__ == "__main__":
         sys.exit(1)
 
     print("\n\n[main] [>] Configuração de caminhos de saída")
-    results_log_path_template = config.get("results_log_path", "logs/final_results_{model}_{strategy}.csv")
-    output_csv = results_log_path_template.format(model=output_model_name, strategy=strategy_name)
+    results_log_path_template = config.get("results_log_path", "logs/{objective}/final_results_{model}_{strategy}.csv")
+    output_csv = results_log_path_template.format(objective=objective_name, model=output_model_name, strategy=strategy_name)
 
-    output_plot = f"logs/pareto_{output_model_name}_{strategy_name}.png" if is_multiobjective else ""
+    output_plot = f"logs/{objective_name}/pareto_{output_model_name}_{strategy_name}.png" if is_multiobjective else ""
 
-    # Atualizar o config com os caminhos reais a serem usados, se as funções internas dependerem deles.
     config["actual_results_log_path"] = output_csv
     config["actual_pareto_plot_path"] = output_plot
 

@@ -1,13 +1,12 @@
 dataset_path: data/imdb_pt_subset.csv
-# results_log_path: logs/final_results.csv
-results_log_path: logs/evo/final_results.csv
+results_log_path: logs/final_results.csv
 
 top_k: 10
 multiobjective: true
 max_generations: 10
 population_size: 10
 
-ollama_server_url: http://localhost:11434/api/chat # Ou ${OLLAMA_SERVER_URL} se precisar configurar.
+ollama_server_url: http://localhost:11434/api/chat 
 
 evaluators:
   - name: gemma:2b

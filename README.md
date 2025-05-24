@@ -4,7 +4,7 @@
 
 ### Projeto de otimização de prompts com abordagem multiobjetivo e evolutiva
 
-Este projeto investiga a otimização evolutiva de prompts aplicados a tarefas de classificação de sentimento em português, utilizando modelos de linguagem natural (LLMs) e diferentes estratégias de prompting. A função de otimização aplicada busca maximização da acurácia e minimização da quantidade de tokens utilizados.
+Este projeto investiga a otimização evolutiva de prompts aplicados a tarefas de classificação de sentimento em português, utilizando modelos de linguagem natural (LLMs) e diferentes estratégias de prompting. A função de otimização multiobjetiva aplicada busca maximização da acurácia e minimização da quantidade de tokens utilizados.
 
 ## Estrutura de Pastas
 
@@ -126,28 +126,22 @@ Classificação binária de sentimento sobre resenhas de filmes (positivo ou neg
 
 ```mermaid
 graph LR;
-subgraph Estratégia de otimização
-    Monoobjetiva-EvoPrompt
-    Multiobjetiva-EmoPrompt
-    end
-```
 
-```mermaid
-graph LR;
+subgraph Estratégia de otimização
+    Mono-objetiva
+    Multi-objetiva
+    end
 
 subgraph Modelos de avaliação  
     gemma:2b
-    deepseek
     sabiazinho3
     end
 
 subgraph Estratégia de prompting
     zero-shot
-    few-shot
-    cot
     end
 
- gemma:2b & deepseek & sabiazinho3 ------> zero-shot & few-shot & cot; 
+Mono-objetiva & Multi-objetiva ------>  gemma:2b & sabiazinho3 ------> zero-shot; 
 ```
 
 **Modelo de Evolução:**
@@ -156,35 +150,30 @@ subgraph Estratégia de prompting
 
 ---
 
-## Testes Iniciais
+### 1. Mono objetivo - EvoPrompt
 
-Os primeiros testes realizados foram inspirados na estrutura do [EvoPrompt (ICLR 2024)](https://arxiv.org/pdf/2309.08532), o projeto realiza a evolução de prompts de forma automatizada, com geração orientada por LLMs e avaliação multi-modelo.
+a. Modelo `gemma:2b`
 
----
+    Resulados iniciais: `logs/evo/gemma-b/`
 
-## Experimentos:
+b. Modelo `sabiazinho-3`
 
-### 1. EvoPrompt × Gemma:2b
+    Resulados iniciais: `logs/evo/sabiazinho-3/`
 
-a. Estratégia `zero-shot`
+### 2. Multi objetivo - EmoPrompt
 
-    Resulados iniciais: `logs/evo/gemma2b_zero-shot/`
+a. Modelo `gemma:2b`
 
-b. Estratégia `few-shot`
+    Resulados iniciais: `logs/emo/gemma-b/`
 
-    Resulados iniciais: `logs/evo/gemma2b_few-shot/`
+b. Modelo `sabiazinho-3`
 
-c: Estratégia `CoT` (Chain-of-Thought)
-
-    Resulados iniciais:  `logs/evo/gemma2b_cot./`
+    Resulados iniciais: `logs/emo/sabiazinho-3/`
 
 ---
 
-...
+## Análise dos resultados
+
+    Resulados: `results/analise_resultados.ipynb`
 
 ---
-
-##  Referências
-
-- Guo et al., 2024. *Connecting Large Language Models with Evolutionary Algorithms* (ICLR)
-- Baumann & Kramer, 2024. *EMO-Prompts: Evolutionary Multi-Objective Prompt Optimization*
