@@ -290,7 +290,7 @@ def evaluate_prompt_single(prompt_instruction: str, text: str, label: int,
         pass 
     
     elif strategy_name == "few-shot":
-        format_args["prompt_instruction"] = prompt_instruction + instruction_suffix.
+        format_args["prompt_instruction"] = prompt_instruction + instruction_suffix
         format_args["examples"] = strategy_config.get("examples", "")
         
     elif strategy_name == "zero-shot":
