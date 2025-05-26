@@ -170,39 +170,29 @@ cython_debug/
 # PyPI configuration file
 .pypirc
 
-#
+
+# Configurações e chaves de API
 .vscode/
 config/credentials.yaml
 
-
-# Configurações e chaves de API
-config/credentials.yaml
-
 # Resultados e logs
-logs/
-*.csv
+# *.csv
 *.ipynb
 
-#multi
-# logs/emo/deepseek/
-# logs/emo/gemma/few-shot/
-# logs/emo/gemma/few-shot2/
-# logs/emo/gemma/zero-shot/
-# logs/emo/gemma/zero-shot2/
-# logs/emo/gemma/cot/
-# logs/emo/sabiazinho/few-shot/
-# logs/emo/sabiazinho/cot/
-# logs/emo/sabiazinho/zero-shot/
-# logs/emo/sabiazinho/zero-shot-2/
-# #mono
-# logs/evo/deepseek/
-# logs/evo/gemma/few-shot/
-# logs/evo/gemma/cot/
-# logs/evo/gemma/zero-shot/
-# logs/evo/sabiazinho/few-shot/
-# logs/evo/sabiazinho/cot/
-# logs/evo/sabiazinho/zero-shot/
+# logs/*
+logs/evo/gemma/zero-shot/*
+logs/evo/sabiazinho/zero-shot/*
+logs/emo/gemma/zero-shot/*
+logs/emo/sabiazinho/zero-shot/*
+# Resultados finais
+!logs/evo/gemma/zero-shot/final_results.csv
+!logs/evo/sabiazinho/zero-shot/final_results.csv
+!logs/emo/gemma/zero-shot/final_results.csv
+!logs/emo/sabiazinho/zero-shot/final_results.csv
 
+# Notebooks Jupyter
+results/*
+!results/artigo_analise_resultados.ipynb
 
 # Dados
 #data/imdb_pt_subset.csv

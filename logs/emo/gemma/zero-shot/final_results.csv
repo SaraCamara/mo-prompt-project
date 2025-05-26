@@ -1,0 +1,8 @@
+prompt,acc,f1,tokens,rank,crowding_distance
+"""Classifique o sentimento desta análise de filme como 'positivo' ou 'negativo' com base na avaliação apresentada.""",0.92,0.9183673469387755,21,0,inf
+"""Classifique o sentimento desta crítica de filme como 'positivo' ou 'negativo'.""",0.9,0.8979591836734694,16,0,1.1363636363636362
+Avalie o sentimento desta crítica de filme e classifique-a como bom ou ruim.,0.87,0.8631578947368421,14,0,0.28181818181818186
+Decida se a crítica abaixo expressa uma visão favorável ou desfavorável do filme.,0.87,0.8602150537634409,14,0,0.4818181818181818
+"""Classifique o sentimento da opinião como positivo ou negativo.""",0.86,0.8478260869565217,12,0,0.8636363636363636
+"""Classifique a opinião como positiva ou negativa.""",0.82,0.8085106382978723,10,0,inf
+"""Classifique este sentimento como positivo ou negativo.""",0.82,0.8043478260869565,10,0,0.5818181818181818
