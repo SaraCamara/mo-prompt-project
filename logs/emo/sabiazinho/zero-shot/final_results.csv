@@ -1,2 +1,0 @@
-prompt,acc,f1,tokens,rank,crowding_distance
-"""Classifique este comentário como positivo ou negativo.""",0.95,0.9514563106796117,10,0,inf

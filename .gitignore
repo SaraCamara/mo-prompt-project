@@ -176,19 +176,19 @@ cython_debug/
 config/credentials.yaml
 
 # Resultados e logs
-# *.csv
+ *.csv
 *.ipynb
-
+logs/*
 # logs/*
 logs/evo/gemma/zero-shot/*
 logs/evo/sabiazinho/zero-shot/*
 logs/emo/gemma/zero-shot/*
 logs/emo/sabiazinho/zero-shot/*
 # Resultados finais
-!logs/evo/gemma/zero-shot/final_results.csv
-!logs/evo/sabiazinho/zero-shot/final_results.csv
-!logs/emo/gemma/zero-shot/final_results.csv
-!logs/emo/sabiazinho/zero-shot/final_results.csv
+# !logs/evo/gemma/zero-shot/final_results.csv
+# !logs/evo/sabiazinho/zero-shot/final_results.csv
+# !logs/emo/gemma/zero-shot/final_results.csv
+# !logs/emo/sabiazinho/zero-shot/final_results.csv
 
 # Notebooks Jupyter
 results/*
