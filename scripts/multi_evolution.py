@@ -19,10 +19,10 @@ def run_multi_evolution(config, dataset, initial_prompts_text, output_csv_path, 
     base_output_dir = config["base_output_dir"]
     per_generation_pareto_log_dir = os.path.join(base_output_dir, "per_generation_pareto")
     os.makedirs(per_generation_pareto_log_dir, exist_ok=True)
-    
+
     print(f"[multi_evolution] Avaliador: {evaluator_config['name']}")
     print(f"[multi_evolution] Estratégia: {strategy_config['name']}")
-    
+
     # Passo 1: População Inicial (P_0)
     print("\n[multi_evolution] Avaliando população inicial...")
     current_population = evaluate_population(initial_prompts_text, dataset, config)

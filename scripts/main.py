@@ -24,6 +24,7 @@ def install_requirements():
         print(f"[main] Arquivo {requirements_file} não encontrado.")
         sys.exit(1)
 
+
 # Função auxiliar para obter input numérico validado
 def get_validated_numerical_input(prompt_message, num_options):
     while True:
@@ -75,36 +76,64 @@ if __name__ == "__main__":
 
     evaluator_choice_idx = get_validated_numerical_input("Digite o número da opção desejada: ", len(available_evaluators))
     selected_evaluator_config = available_evaluators[evaluator_choice_idx]
-    evaluator_name = selected_evaluator_config.get("name", "unknown_model") # <-- Nome correto
+    evaluator_name = selected_evaluator_config.get("name", "unknown_model")
     print(f"[main] Avaliador selecionado: {evaluator_name}")
-    config["evaluators"] = [selected_evaluator_config] # <-- Config correta
+    config["evaluators"] = [selected_evaluator_config]
 
     # Extrai o nome base do modelo para usar no caminho do diretório
     parts = re.split(r'[:/_-]', evaluator_name)
-    output_model_name = parts[0] # <-- Nome para pasta correto
+    output_model_name = parts[0]
 
     # Seleção de Estratégia
-    print("\n\n[main] [>] Selecione da estratégia de prompt:")
-    available_strategies = config.get("strategies", [])
-    if not available_strategies:
-        print("[main] Nenhuma estratégia definida em 'experiment_settings.yaml'. Encerrando.")
+print("\n\n[main] [>] Selecione da estratégia de prompt:")
+available_strategies = config.get("strategies", [])
+if not available_strategies:
+    print("[main] Nenhuma estratégia definida em 'experiment_settings.yaml'. Encerrando.")
+    sys.exit(1)
+
+for i, strategy_config in enumerate(available_strategies):
+    print(f"  {i}) {strategy_config.get('name', 'Estratégia Desconhecida')}")
+
+strategy_choice_idx = get_validated_numerical_input("Digite o número da opção desejada: ", len(available_strategies))
+selected_strategy_config = available_strategies[strategy_choice_idx]
+strategy_name = selected_strategy_config["name"]
+print(f"[main] Estratégia de prompt selecionada: {strategy_name}")
+config["strategies"] = [selected_strategy_config]
+
+# Carregamento de Dados
+dataset_path = config.get("dataset_path", "data/imdb_pt_subset.csv")
+if not os.path.exists(dataset_path):
+    print(f"[main] Arquivo de dataset '{dataset_path}' não encontrado. Verifique 'experiment_settings.yaml'. Encerrando.")
+    sys.exit(1)
+try:
+    df_sample = pd.read_csv(dataset_path)
+    print(f"[main] Dataset carregado: {dataset_path} ({len(df_sample)} registros)")
+except Exception as e:
+    print(f"[main] Erro ao carregar o dataset '{dataset_path}': {e}. Encerrando.")
+    sys.exit(1)
+
+# Carregamento da População Inicial (COM A INDENTAÇÃO CORRIGIDA)
+print("\n\n[main] [>] Carregamento da população inicial")
+prompts_path = "data/initial_prompts.txt"
+if os.path.exists(prompts_path):
+    with open(prompts_path, "r", encoding="utf-8") as f:
+        # <-- CORREÇÃO: Esta linha foi movida para DENTRO do bloco 'with'
+        initial_prompts = [line.strip() for line in f if line.strip()]
+    
+    # <-- CORREÇÃO: Este bloco agora está na indentação correta, após o 'with'
+    if not initial_prompts:
+        print(f"[main] Arquivo de prompts '{prompts_path}' está vazio. Encerrando.")
         sys.exit(1)
+    
+    # <-- CORREÇÃO: A mensagem de sucesso agora está fora do 'if not initial_prompts'
+    print(f"[main] {len(initial_prompts)} prompts carregados do arquivo: {prompts_path}")
+else:
+    print(f"[main] Arquivo de prompts '{prompts_path}' não encontrado. Encerrando.")
+    sys.exit(1)
 
-    for i, strategy_config in enumerate(available_strategies):
-        print(f"  {i}) {strategy_config.get('name', 'Estratégia Desconhecida')}")
-
-    strategy_choice_idx = get_validated_numerical_input("Digite o número da opção desejada: ", len(available_strategies))
-    selected_strategy_config = available_strategies[strategy_choice_idx]
-    strategy_name = selected_strategy_config["name"] # <-- Nome correto
-    print(f"[main] Estratégia de prompt selecionada: {strategy_name}")
-    config["strategies"] = [selected_strategy_config] # <-- Config correta
-
-    # Carregamento de Dados
-    # ... (código sem alterações) ...
-
-    # Configuração de Caminhos de Saída (Sem Redundância)
-    print("\n\n[main] [>] Configurando diretório de saída para o experimento...")
-    objective_path_name = "emo" if is_multiobjective else "evo"
+# Configuração de Caminhos de Saída (Sem Redundância)
+print("\n\n[main] [>] Configurando diretório de saída para o experimento...")
+objective_path_name = "emo" if is_multiobjective else "evo"
 
     # Usa as variáveis já definidas corretamente após a seleção do usuário
     base_output_dir = os.path.join("logs", objective_path_name, output_model_name, strategy_name)
