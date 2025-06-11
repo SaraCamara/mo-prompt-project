@@ -107,7 +107,7 @@ def query_maritalk(full_prompt, model_config):
             url=endpoint_url,
             headers={"Authorization": f"Bearer {api_key}", "Content-Type": "application/json"},
             json=request_data,
-            timeout=30
+            timeout=55
         )
         response.raise_for_status()
         return response.json().get("answer", "").strip().lower()
