@@ -1,3 +1,4 @@
+# main.py
 import subprocess
 import sys
 import os
@@ -38,20 +39,19 @@ def get_validated_numerical_input(prompt_message, num_options):
 
 if __name__ == "__main__":
     install_requirements()
-    credentials = load_credentials_from_yaml("config/credentials.yaml") 
+    credentials = load_credentials_from_yaml("config/credentials.yaml")
     if not credentials:
         print("[main] [✗] ERRO FATAL: Falha ao carregar 'credentials.yaml'. Encerrando.")
         sys.exit(1)
     print("[main] [✓] Credenciais carregadas.")
 
     config = load_settings("config/experiment_settings.yaml", credentials)
-
     if not config:
-        print("[main] [✗] ERRO FATAL: Falha ao carregar 'experiment_settings.yaml' ou resolver seus placeholders. Encerrando.")
+        print("[main] [✗] ERRO FATAL: Falha ao carregar 'experiment_settings.yaml'. Encerrando.")
         sys.exit(1)
     print("[main] [✓] Configurações principais carregadas e processadas.")
 
-
+    # Seleção de Modo (Mono/Multi)
     print("\n\n[main] [>] Selecione estratégia de otimização:\n  0) Mono-objetivo\n  1) Multiobjetivo")
     while True:
         optimization_type_input = input("Digite o número da opção desejada (0 ou 1): ")
@@ -61,10 +61,9 @@ if __name__ == "__main__":
         else:
             print("[main] Opção inválida. Digite 0 ou 1.")
     config["objective"] = "multiobjetivo" if is_multiobjective else "mono-objetivo"
-    objective_path_name = "emo" if config["objective"] == "multiobjetivo" else "evo"
     print(f"[main] Tipo de otimização selecionado: [{config['objective'].capitalize()}]")
 
-
+    # Seleção de Avaliador
     print("\n\n[main] [>] Selecione do modelo avaliador:")
     available_evaluators = config.get("evaluators", [])
     if not available_evaluators:
@@ -74,19 +73,17 @@ if __name__ == "__main__":
     for i, evaluator_config in enumerate(available_evaluators):
         print(f"  {i}) {evaluator_config.get('name', 'Avaliador Desconhecido')}")
 
-    evaluator_choice_idx = get_validated_numerical_input(
-        "Digite o número da opção desejada: ",
-        len(available_evaluators)
-    )
+    evaluator_choice_idx = get_validated_numerical_input("Digite o número da opção desejada: ", len(available_evaluators))
     selected_evaluator_config = available_evaluators[evaluator_choice_idx]
-    evaluator_name = selected_evaluator_config.get("name", "unknown_model")
-
+    evaluator_name = selected_evaluator_config.get("name", "unknown_model") # <-- Nome correto
     print(f"[main] Avaliador selecionado: {evaluator_name}")
-    config["evaluators"] = [selected_evaluator_config]
+    config["evaluators"] = [selected_evaluator_config] # <-- Config correta
+
+    # Extrai o nome base do modelo para usar no caminho do diretório
     parts = re.split(r'[:/_-]', evaluator_name)
-    output_model_name = parts[0]
+    output_model_name = parts[0] # <-- Nome para pasta correto
 
-
+    # Seleção de Estratégia
     print("\n\n[main] [>] Selecione da estratégia de prompt:")
     available_strategies = config.get("strategies", [])
     if not available_strategies:
@@ -96,79 +93,38 @@ if __name__ == "__main__":
     for i, strategy_config in enumerate(available_strategies):
         print(f"  {i}) {strategy_config.get('name', 'Estratégia Desconhecida')}")
 
-    strategy_choice_idx = get_validated_numerical_input(
-        "Digite o número da opção desejada: ",
-        len(available_strategies)
-    )
+    strategy_choice_idx = get_validated_numerical_input("Digite o número da opção desejada: ", len(available_strategies))
     selected_strategy_config = available_strategies[strategy_choice_idx]
-    strategy_name = selected_strategy_config["name"]
+    strategy_name = selected_strategy_config["name"] # <-- Nome correto
     print(f"[main] Estratégia de prompt selecionada: {strategy_name}")
+    config["strategies"] = [selected_strategy_config] # <-- Config correta
 
+    # Carregamento de Dados
+    # ... (código sem alterações) ...
 
-    config["strategies"] = [selected_strategy_config]
-
-    dataset_path = config.get("dataset_path", "data/imdb_pt_subset.csv")
-    if not os.path.exists(dataset_path):
-        print(f"[main] Arquivo de dataset '{dataset_path}' não encontrado. Verifique 'experiment_settings.yaml'. Encerrando.")
-        sys.exit(1)
-    try:
-        df_sample = pd.read_csv(dataset_path)
-        print(f"[main] Dataset carregado: {dataset_path} ({len(df_sample)} registros)")
-    except Exception as e:
-        print(f"[main] Erro ao carregar o dataset '{dataset_path}': {e}. Encerrando.")
-        sys.exit(1)
-
-
-    print("\n\n[main] [>] Carregamento da população inicial")
-    prompts_path = "data/initial_prompts.txt" 
-    if os.path.exists(prompts_path):
-        with open(prompts_path, "r", encoding="utf-8") as f:
-            initial_prompts = [line.strip() for line in f if line.strip()]
-        if not initial_prompts:
-            print(f"[main] Arquivo de prompts '{prompts_path}' está vazio. Encerrando.")
-            sys.exit(1)
-        print(f"[main] {len(initial_prompts)} prompts carregados do arquivo: {prompts_path}")
-    else:
-        print(f"[main] Arquivo de prompts '{prompts_path}' não encontrado. Encerrando.")
-        sys.exit(1)
-
+    # Configuração de Caminhos de Saída (Sem Redundância)
     print("\n\n[main] [>] Configurando diretório de saída para o experimento...")
-    
-    evaluator_config = config.get("evaluators", [{}])[0]
-    strategy_config = config.get("strategies", [{}])[0]
-    evaluator_name = evaluator_config.get("name", "unknown_model")
-    parts = re.split(r'[:/_-]', evaluator_name)
-    output_model_name = parts[0]
-    strategy_name = strategy_config.get("name", "unknown_strategy")
     objective_path_name = "emo" if is_multiobjective else "evo"
 
+    # Usa as variáveis já definidas corretamente após a seleção do usuário
     base_output_dir = os.path.join("logs", objective_path_name, output_model_name, strategy_name)
     print(f"[main] Todos os resultados e logs para esta execução serão salvos em: '{base_output_dir}'")
-    os.makedirs(base_output_dir, exist_ok=True) 
+    os.makedirs(base_output_dir, exist_ok=True)
 
     config["base_output_dir"] = base_output_dir
 
     output_csv = os.path.join(base_output_dir, "final_results.csv")
     output_plot = os.path.join(base_output_dir, "final_pareto_front.png") if is_multiobjective else ""
 
-    config["actual_results_log_path"] = output_csv
-    config["actual_pareto_plot_path"] = output_plot
-
     print(f"[main] Caminhos configurados:\n - CSV: {output_csv}")
     if output_plot:
         print(f" - Plot: {output_plot}")
 
-
-    print("\n\n[main] [>] Execução do algoritmo evolutivo\n")
-    print(f"[main] Executando otimização {'multiobjetiva' if is_multiobjective else 'mono-objetiva'} com avaliador '{evaluator_name}' e estratégia '{strategy_name}'.\n")
-
+    # Execução do Algoritmo
+    print("\n\n[main] [>] Iniciando execução do algoritmo evolutivo...\n")
 
     if is_multiobjective:
-        if 'run_multi_evolution' in globals():
-            run_multi_evolution(config, df_sample, initial_prompts, output_csv, output_plot)
-        else:
-            print("[main] Função 'run_multi_evolution' não implementada. Encerrando.")
-            sys.exit(1)
+        run_multi_evolution(config, df_sample, initial_prompts, output_csv, output_plot)
     else:
         run_mono_evolution(config, df_sample, initial_prompts, output_csv)
 

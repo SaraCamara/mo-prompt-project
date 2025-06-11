@@ -743,3 +743,88 @@ def save_pareto_front_data(front_individuals, csv_path, plot_path): # Renomeado 
     plt.savefig(plot_path)
     plt.close()
     print(f"[utils] Gráfico da fronteira de Pareto salvo em {plot_path}")
+    
+    def evaluate_population(prompts_to_evaluate, dataset, config):
+    """
+    Avalia uma lista de prompts e retorna uma lista de indivíduos com seus objetivos.
+    """
+    evaluated_population = []
+    evaluator_config = config["evaluators"][0]
+    strategy_config = config["strategies"][0]
+    base_output_dir = config["base_output_dir"]
+    eval_log_dir = os.path.join(base_output_dir, "prompt_eval_logs")
+
+    prompt_list = [p["prompt"] if isinstance(p, dict) else p for p in prompts_to_evaluate]
+    
+    for p_text in prompt_list:
+        # A função evaluate_prompt agora precisa do diretório de log
+        metrics = evaluate_prompt(p_text, dataset, evaluator_config, strategy_config, config, eval_log_dir)
+        acc, f1, tokens, _ = metrics
+        evaluated_population.append({
+            "prompt": p_text,
+            "acc": acc,
+            "f1": f1,
+            "tokens": tokens,
+            "metrics": metrics # Mantém as métricas completas também, pode ser útil
+        })
+    return evaluated_population
+
+def generate_unique_offspring(current_population, config):
+    """
+    Gera uma nova população de filhos únicos a partir da população de pais.
+    """
+    offspring_prompts = []
+    existing_prompts = {ind['prompt'] for ind in current_population}
+    population_size = config.get("population_size", 10)
+    k_tournament_parents = config.get("k_tournament_parents", 2)
+    
+    max_attempts = population_size * 3
+    
+    while len(offspring_prompts) < population_size and len(existing_prompts) < (population_size * 2) and max_attempts > 0:
+        max_attempts -= 1
+        
+        if len(current_population) < 2:
+            # print("[utils] [!] População de pais insuficiente para crossover. Parando de gerar filhos.")
+            break
+
+        parent_pair = tournament_selection_multiobjective(current_population, k_tournament_parents, 2)
+        
+        child_dict_list = crossover_and_mutation_ga(parent_pair, config)
+        
+        if child_dict_list and "prompt" in child_dict_list[0] and "erro_" not in child_dict_list[0]["prompt"]:
+            new_prompt = child_dict_list[0]["prompt"]
+            if new_prompt not in existing_prompts:
+                offspring_prompts.append({"prompt": new_prompt})
+                existing_prompts.add(new_prompt)
+    
+    if len(offspring_prompts) < population_size:
+        print(f"[utils] [!] Apenas {len(offspring_prompts)} filhos únicos foram gerados.")
+        
+    return [p["prompt"] for p in offspring_prompts]
+
+def select_survivors_nsgaii(parent_population, offspring_population, population_size):
+    """
+    Combina pais e filhos e seleciona os melhores indivíduos para a próxima geração
+    usando a metodologia NSGA-II (fast non-dominated sort e crowding distance).
+    """
+    combined_population = parent_population + offspring_population
+    
+    # Realiza a classificação não-dominada e calcula a crowding distance
+    all_fronts = fast_non_dominated_sort(combined_population)
+    
+    next_generation = []
+    for front in all_fronts:
+        if not front: continue
+        
+        compute_crowding_distance(front)
+        
+        if len(next_generation) + len(front) <= population_size:
+            next_generation.extend(front)
+        else:
+            num_needed = population_size - len(next_generation)
+            front.sort(key=lambda x: x['crowding_distance'], reverse=True)
+            next_generation.extend(front[:num_needed])
+            break
+            
+    return next_generation
+
