@@ -2,9 +2,10 @@
 import os
 import random 
 from utils import (
-    evaluate_population,      # Função refatorada
-    generate_unique_offspring, # Função refatorada
-    select_survivors_nsgaii,   # Função refatorada
+    evaluate_population,
+    compute_crowding_distance,    
+    generate_unique_offspring, 
+    select_survivors_nsgaii,  
     fast_non_dominated_sort,
     save_pareto_front_data
 )
@@ -23,12 +24,22 @@ def run_multi_evolution(config, dataset, initial_prompts_text, output_csv_path, 
     print(f"[multi_evolution] Avaliador: {evaluator_config['name']}")
     print(f"[multi_evolution] Estratégia: {strategy_config['name']}")
 
-    # Passo 1: População Inicial (P_0)
+    # Passo 1: Avaliação da População Inicial (P_0)
     print("\n[multi_evolution] Avaliando população inicial...")
     current_population = evaluate_population(initial_prompts_text, dataset, config)
     print(f"[multi_evolution] População inicial avaliada. Tamanho: {len(current_population)}")
-    
+
+    # Classifica a população inicial para obter os ranks
     initial_fronts = fast_non_dominated_sort(current_population)
+    
+    # ADICIONE ESTE BLOCO DE CÓDIGO AQUI
+    # Calcula a crowding distance para cada fronteira da população inicial
+    print("[multi_evolution] Calculando crowding distance para a população inicial...")
+    for front in initial_fronts:
+        compute_crowding_distance(front)
+
+
+    # O código abaixo, para salvar a fronteira de Geração 0, continua o mesmo
     if initial_fronts and initial_fronts[0]:
         save_pareto_front_data(
             initial_fronts[0], 
