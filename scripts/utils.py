@@ -766,9 +766,9 @@ def save_pareto_front_data(front_individuals, csv_path, plot_path): # Renomeado 
     print(f"[utils] Gráfico da fronteira de Pareto salvo em {plot_path}")
     
     def evaluate_population(prompts_to_evaluate, dataset, config):
-    """
-    Avalia uma lista de prompts e retorna uma lista de indivíduos com seus objetivos.
-    """
+        """
+        Avalia uma lista de prompts e retorna uma lista de indivíduos com seus objetivos.
+        """
     evaluated_population = []
     evaluator_config = config["evaluators"][0]
     strategy_config = config["strategies"][0]

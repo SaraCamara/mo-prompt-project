@@ -135,26 +135,26 @@ else:
 print("\n\n[main] [>] Configurando diretório de saída para o experimento...")
 objective_path_name = "emo" if is_multiobjective else "evo"
 
-    # Usa as variáveis já definidas corretamente após a seleção do usuário
-    base_output_dir = os.path.join("logs", objective_path_name, output_model_name, strategy_name)
-    print(f"[main] Todos os resultados e logs para esta execução serão salvos em: '{base_output_dir}'")
-    os.makedirs(base_output_dir, exist_ok=True)
+# Usa as variáveis já definidas corretamente após a seleção do usuário
+base_output_dir = os.path.join("logs", objective_path_name, output_model_name, strategy_name)
+print(f"[main] Todos os resultados e logs para esta execução serão salvos em: '{base_output_dir}'")
+os.makedirs(base_output_dir, exist_ok=True)
 
-    config["base_output_dir"] = base_output_dir
+config["base_output_dir"] = base_output_dir
 
-    output_csv = os.path.join(base_output_dir, "final_results.csv")
-    output_plot = os.path.join(base_output_dir, "final_pareto_front.png") if is_multiobjective else ""
+output_csv = os.path.join(base_output_dir, "final_results.csv")
+output_plot = os.path.join(base_output_dir, "final_pareto_front.png") if is_multiobjective else ""
 
-    print(f"[main] Caminhos configurados:\n - CSV: {output_csv}")
-    if output_plot:
-        print(f" - Plot: {output_plot}")
+print(f"[main] Caminhos configurados:\n - CSV: {output_csv}")
+if output_plot:
+    print(f" - Plot: {output_plot}")
 
-    # Execução do Algoritmo
-    print("\n\n[main] [>] Iniciando execução do algoritmo evolutivo...\n")
+# Execução do Algoritmo
+print("\n\n[main] [>] Iniciando execução do algoritmo evolutivo...\n")
 
-    if is_multiobjective:
-        run_multi_evolution(config, df_sample, initial_prompts, output_csv, output_plot)
-    else:
-        run_mono_evolution(config, df_sample, initial_prompts, output_csv)
+if is_multiobjective:
+    run_multi_evolution(config, df_sample, initial_prompts, output_csv, output_plot)
+else:
+    run_mono_evolution(config, df_sample, initial_prompts, output_csv)
 
-    print(f"\n[main] Execução finalizada. Resultados disponíveis em:\n - {output_csv}\n")
+print(f"\n[main] Execução finalizada. Resultados disponíveis em:\n - {output_csv}\n")
