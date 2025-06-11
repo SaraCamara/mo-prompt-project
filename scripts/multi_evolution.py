@@ -28,12 +28,12 @@ def run_multi_evolution(config, dataset, initial_prompts_text, output_csv_path, 
     population_size = config.get("population_size", 10) 
     k_tournament_parents = config.get("k_tournament_parents", 2)
 
-    generation_log_dir = config.get("generation_log_dir_emo", "logs/emo/generations_detail")
-    os.makedirs(generation_log_dir, exist_ok=True)
-    # Log de cada geração (fronteira de Pareto da geração)
-    per_generation_pareto_log_dir = os.path.join(os.path.dirname(output_csv_path), "per_generation_pareto")
-    os.makedirs(per_generation_pareto_log_dir, exist_ok=True)
+    base_output_dir = config["base_output_dir"]
 
+    generation_log_dir = os.path.join(base_output_dir, "generations_detail")
+    os.makedirs(generation_log_dir, exist_ok=True)
+    per_generation_pareto_log_dir = os.path.join(base_output_dir, "per_generation_pareto")
+    os.makedirs(per_generation_pareto_log_dir, exist_ok=True)
 
     print(f"[multi_evolution] Avaliador: {evaluator_config['name']}")
     print(f"[multi_evolution] Estratégia: {strategy_config['name']}")
@@ -43,7 +43,7 @@ def run_multi_evolution(config, dataset, initial_prompts_text, output_csv_path, 
     current_population_raw = [] 
     for i, p_text in enumerate(initial_prompts_text):
         print(f"[multi_evolution] Avaliando prompt inicial {i + 1}/{len(initial_prompts_text)}: \"{p_text[:100]}\"")
-        metrics = evaluate_prompt(p_text, dataset, evaluator_config, strategy_config, config)
+        metrics = evaluate_prompt(p_text, dataset, evaluator_config, strategy_config, config, base_output_dir)
         current_population_raw.append({"prompt": p_text, "metrics": metrics})
 
     # Transforma para o formato de indivíduo com objetivos nomeados
@@ -62,17 +62,48 @@ def run_multi_evolution(config, dataset, initial_prompts_text, output_csv_path, 
             os.path.join(per_generation_pareto_log_dir, f"pareto_gen_0.png")
         )
 
-
     # Ciclo de Gerações 
+    stagnation_counter = 0
+    last_front_hash = None
+    stagnation_limit = config.get("stagnation_limit", 3) # Número de gerações sem mudança para parar
+    
     for generation_num in range(config["max_generations"]):
         current_gen_display = generation_num + 1
         print(f"\n[multi_evolution] Geração {current_gen_display} iniciada.")
 
         # Geração de Filhos
         offspring_prompts_generated = []
-        
+        # Crie um conjunto (set) com os prompts existentes para busca rápida
+        existing_prompts = {ind['prompt'] for ind in current_population_individuals}
+
         num_children_to_generate = population_size
-        print(f"[multi_evolution] Gerando {num_children_to_generate} filhos")
+        print(f"[multi_evolution] Gerando até {num_children_to_generate} filhos únicos...")
+
+        # Adicione um limite de tentativas para evitar loops infinitos
+        max_generation_attempts = num_children_to_generate * 3 
+        attempts = 0
+
+        while len(offspring_prompts_generated) < num_children_to_generate and attempts < max_generation_attempts:
+            attempts += 1
+            parent_pair = tournament_selection_multiobjective(current_population_individuals, k_tournament_parents, 2)
+            # ... (lógica para garantir que parent_pair tenha 2 pais) ...
+
+            child_dict_list = crossover_and_mutation_ga(parent_pair, config)
+            
+            if child_dict_list and "prompt" in child_dict_list[0] and not "erro_" in child_dict_list[0]["prompt"]:
+                new_prompt = child_dict_list[0]["prompt"]
+                
+                # --- VERIFICAÇÃO DE DUPLICATAS ---
+                if new_prompt not in existing_prompts:
+                    offspring_prompts_generated.append(child_dict_list[0])
+                    existing_prompts.add(new_prompt) # Adiciona ao conjunto para futuras verificações
+                # else:
+                    # print(f"[multi_evolution] [!] Filho duplicado descartado.")
+            # else:
+                # print(f"[multi_evolution] [!] Erro ao gerar filho. Descartado.")
+
+        if len(offspring_prompts_generated) < num_children_to_generate:
+            print(f"[multi_evolution] [!] Apenas {len(offspring_prompts_generated)} filhos únicos foram gerados após {attempts} tentativas.")
 
         # Certificar que a população tem indivíduos para seleção
         if not current_population_individuals:
@@ -183,3 +214,22 @@ def run_multi_evolution(config, dataset, initial_prompts_text, output_csv_path, 
         save_pareto_front_data([], output_csv_path, output_plot_path)
 
     print(f"\n[multi_evolution] [✓] Resultados finais salvos em '{output_csv_path}' e gráfico em '{output_plot_path}'.")
+
+    if current_pareto_front:
+    # Cria uma representação única da fronteira atual para comparar com a anterior
+    # Ordena para garantir que a ordem não afete o hash
+    front_prompts_tuple = tuple(sorted([ind['prompt'] for ind in current_pareto_front]))
+    current_front_hash = hash(front_prompts_tuple)
+
+    if current_front_hash == last_front_hash:
+        stagnation_counter += 1
+        print(f"[multi_evolution] [!] A fronteira de Pareto não mudou. Contador de estagnação: {stagnation_counter}/{stagnation_limit}")
+    else:
+        stagnation_counter = 0 # Reseta o contador se houver mudança
+        print("[multi_evolution] A fronteira de Pareto evoluiu.")
+    
+    last_front_hash = current_front_hash
+
+    if stagnation_counter >= stagnation_limit:
+        print(f"\n[multi_evolution] A evolução estagnou por {stagnation_limit} gerações. Interrompendo.")
+        break # Sai do loop de gerações

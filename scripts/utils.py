@@ -186,20 +186,6 @@ def _call_openai_api(messages, generator_config, temperature=0.7):
     except openai.error.AuthenticationError as e: # Erro de autenticação específico do SDK 0.28.0
         print(f"[utils] [✗] ERRO DE AUTENTICAÇÃO com a API OpenAI (SDK 0.28.0): {e}.")
         return "erro_api_gerador_autenticacao"
-    # except openai.error.APIConnectionError as e:
-    #     print(f"[utils] [✗] Erro de conexão com a API OpenAI (SDK 0.28.0) em '{openai.api_base}': {e}")
-    #     return "erro_api_gerador_conexao"
-    # except openai.error.RateLimitError as e:
-    #     print(f"[utils] [✗] Erro de limite de taxa (RateLimitError) da API OpenAI (SDK 0.28.0): {e}")
-    #     return "erro_api_gerador_limite_taxa"
-    # except openai.error.InvalidRequestError as e: 
-    #     print(f"[utils] [✗] Erro de requisição inválida para API OpenAI (SDK 0.28.0) para o modelo '{model_name}': {e}")
-    #     return f"erro_api_gerador_requisicao_invalida"
-    # except openai.error.APIError as e: 
-    #     http_status = e.http_status if hasattr(e, 'http_status') else 'N/A'
-    #     http_body = e.http_body if hasattr(e, 'http_body') else 'N/A'
-    #     print(f"[utils] [✗] Erro genérico da API OpenAI (SDK 0.28.0): Status={http_status}, Resposta={http_body}")
-    #     return f"erro_api_gerador_status_{http_status}"
     except Exception as e: # Captura quaisquer outros erros inesperados
         print(f"[utils] [✗] Erro inesperado durante a chamada da API OpenAI (SDK 0.28.0) para o modelo '{model_name}': {type(e).__name__} - {e}")
         return "erro_api_gerador_inesperado"
@@ -276,7 +262,7 @@ def evaluate_prompt_single(prompt_instruction: str, text: str, label: int,
         return 1 - label, "erro_template_ausente_na_configuracao_da_estrategia"
 
     # Instrução para o LLM sobre o formato da resposta
-    instruction_suffix = "\nResponda apenas com a palavra 'positivo' ou 'negativo'."
+    instruction_suffix = "\nResponda apenas com '1' para resenhas positivas ou '0' para resenhas negativas."
     
     # Argumentos base para a formatação do template
     format_args = {
@@ -339,16 +325,15 @@ def evaluate_prompt_single(prompt_instruction: str, text: str, label: int,
         
     return prediction, response_text
 
-def evaluate_prompt(prompt_instruction, dataset, evaluator_config, strategy_config, experiment_settings):
+def evaluate_prompt(prompt_instruction, dataset, evaluator_config, strategy_config, experiment_settings, output_dir):
     predictions = []
     true_labels = dataset["label"].tolist()
     texts = dataset["text"].tolist()
 
     evaluator_name_sanitized = evaluator_config["name"].replace(":", "_").replace("/", "_")
     strategy_name_sanitized = strategy_config["name"]
-    log_dir = "logs/prompt_eval_logs"
-    os.makedirs(log_dir, exist_ok=True)
-    log_path = os.path.join(log_dir, f"eval_{evaluator_name_sanitized}_{strategy_name_sanitized}.csv")
+    os.makedirs(output_dir, exist_ok=True)
+    log_path = os.path.join(output_dir, f"eval_{evaluator_name_sanitized}_{strategy_name_sanitized}.csv")
 
     if not os.path.exists(log_path):
         with open(log_path, "w", encoding="utf-8") as log_file:
@@ -368,38 +353,28 @@ def evaluate_prompt(prompt_instruction, dataset, evaluator_config, strategy_conf
     precision = precision_score(true_labels, predictions, zero_division=0)
     recall = recall_score(true_labels, predictions, zero_division=0)
     f1 = f1_score(true_labels, predictions, zero_division=0)
-    
     tokens = count_tokens(prompt_instruction)
-
     alert_message = ""
     if precision == 0 and recall == 0 and any(p == 1 for p in predictions): # Se previu positivo mas errou todos
         alert_message = "Previsões positivas feitas, mas todas incorretas."
     elif not any(p == 1 for p in predictions) and any(l == 1 for l in true_labels): # Não previu positivo, mas havia positivos
         alert_message = "Nenhuma previsão positiva feita, mas existiam exemplos positivos."
-
     return acc, f1, tokens, alert_message
 
 def extract_label(text: str) -> int | None:
-    text_lower = text.lower().strip()
-    # Verifica frases mais explícitas primeiro
-    if "classificação: positivo" in text_lower or text_lower == "positivo":
-        return 1
-    elif "classificação: negativo" in text_lower or text_lower == "negativo":
-        return 0
-
-    # Falsos positivos (ex: "isso não é positivo" -> seria pego como positivo)
-    # A instrução no prompt é a melhor defesa.
-    if "positivo" in text_lower: # Pode precisar de mais lógica se "não positivo" for uma resposta
-        return 1
-    elif "negativo" in text_lower:
-        return 0
-    return None # Se nenhuma etiqueta clara for encontrada
+    if not isinstance(text, str):
+        return None
+    # regex para encontrar o primeiro dígito '0' ou '1' isolado na string.
+    match = re.search(r'\b(0|1)\b', text)
+    if match:
+        return int(match.group(1))
+    return None
 
 def count_tokens(prompt: str) -> int:
     return len(tokenizer.tokenize(prompt))
 
 
-#  Funções Monoobjetivo 
+#  Funções Mono-objetivo 
 def roulette_wheel_selection(population, num_parents_to_select):
     """
     Seleciona pais da população usando o método da roleta.
@@ -637,15 +612,13 @@ def tournament_selection_multiobjective(population_with_rank_and_crowding, k_tou
     return selected_parents
 
 
-# Persistência
-def save_generation_results(population, generation, config):
-    base_log_path = config.get("generation_log_dir", "logs/{objective}/generations_detail") 
-    os.makedirs(base_log_path, exist_ok=True)
+def save_generation_results(population, generation, config, output_dir):
+    os.makedirs(output_dir, exist_ok=True)
     
     evaluator_name = config.get("evaluators", [{}])[0].get("name", "unknown_model").replace(":", "_").replace("/", "_")
     strategy_name = config.get("strategies", [{}])[0].get("name", "unknown_strategy")
     
-    path = os.path.join(base_log_path, f"results_gen_{generation}_{evaluator_name}_{strategy_name}.csv")
+    path = os.path.join(output_dir, f"results_gen_{generation}_{evaluator_name}_{strategy_name}.csv")
 
     data = []
     for ind in population:
@@ -670,9 +643,9 @@ def save_generation_results(population, generation, config):
     df.to_csv(path, index=False, encoding='utf-8')
     print(f"[utils] Resultados detalhados da geração {generation} salvos em {path}")
 
-def save_sorted_population(population, generation, base_log_path="logs/{objective}/generations"):
-    os.makedirs(base_log_path, exist_ok=True)
-    sorted_log_path = os.path.join(base_log_path, f"population_sorted_gen_{generation}.csv")
+def save_sorted_population(population, generation, output_dir):
+    os.makedirs(output_dir, exist_ok=True)
+    sorted_log_path = os.path.join(output_dir, f"population_sorted_gen_{generation}.csv")
 
     data = []
     for ind in population:

@@ -1,6 +1,7 @@
 import subprocess
 import sys
 import os
+import re
 import yaml
 import pandas as pd
 
@@ -50,17 +51,18 @@ if __name__ == "__main__":
         sys.exit(1)
     print("[main] [✓] Configurações principais carregadas e processadas.")
 
-    print("\n\n[main] [>] Selecione estratégia de otimização:\n  0) Monoobjetivo\n  1) Multiobjetivo")
+
+    print("\n\n[main] [>] Selecione estratégia de otimização:\n  0) Mono-objetivo\n  1) Multiobjetivo")
     while True:
         optimization_type_input = input("Digite o número da opção desejada (0 ou 1): ")
         if optimization_type_input in ["0", "1"]:
-            is_multiobjective = optimization_type_input == "1" 
+            is_multiobjective = (optimization_type_input == "1")
             break
         else:
             print("[main] Opção inválida. Digite 0 ou 1.")
-    config["multiobjective_run"] = is_multiobjective
-    objective_name = "emo" if is_multiobjective else "evo"
-    print(f"[main] Tipo de otimização selecionado: [{'Multiobjetivo' if is_multiobjective else 'Monoobjetivo'}]")    
+    config["objective"] = "multiobjetivo" if is_multiobjective else "mono-objetivo"
+    objective_path_name = "emo" if config["objective"] == "multiobjetivo" else "evo"
+    print(f"[main] Tipo de otimização selecionado: [{config['objective'].capitalize()}]")
 
 
     print("\n\n[main] [>] Selecione do modelo avaliador:")
@@ -77,11 +79,12 @@ if __name__ == "__main__":
         len(available_evaluators)
     )
     selected_evaluator_config = available_evaluators[evaluator_choice_idx]
-    evaluator_name = selected_evaluator_config["name"]
-    print(f"[main] Avaliador selecionado: {evaluator_name}")
+    evaluator_name = selected_evaluator_config.get("name", "unknown_model")
 
+    print(f"[main] Avaliador selecionado: {evaluator_name}")
     config["evaluators"] = [selected_evaluator_config]
-    output_model_name = evaluator_name.replace(":", "_").replace("/", "_")
+    parts = re.split(r'[:/_-]', evaluator_name)
+    output_model_name = parts[0]
 
 
     print("\n\n[main] [>] Selecione da estratégia de prompt:")
@@ -129,15 +132,27 @@ if __name__ == "__main__":
         print(f"[main] Arquivo de prompts '{prompts_path}' não encontrado. Encerrando.")
         sys.exit(1)
 
-    print("\n\n[main] [>] Configuração de caminhos de saída")
-    results_log_path_template = config.get("results_log_path", "logs/{objective}/final_results_{model}_{strategy}.csv")
-    output_csv = results_log_path_template.format(objective=objective_name, model=output_model_name, strategy=strategy_name)
+    print("\n\n[main] [>] Configurando diretório de saída para o experimento...")
+    
+    evaluator_config = config.get("evaluators", [{}])[0]
+    strategy_config = config.get("strategies", [{}])[0]
+    evaluator_name = evaluator_config.get("name", "unknown_model")
+    parts = re.split(r'[:/_-]', evaluator_name)
+    output_model_name = parts[0]
+    strategy_name = strategy_config.get("name", "unknown_strategy")
+    objective_path_name = "emo" if is_multiobjective else "evo"
 
-    output_plot = f"logs/{objective_name}/pareto_{output_model_name}_{strategy_name}.png" if is_multiobjective else ""
+    base_output_dir = os.path.join("logs", objective_path_name, output_model_name, strategy_name)
+    print(f"[main] Todos os resultados e logs para esta execução serão salvos em: '{base_output_dir}'")
+    os.makedirs(base_output_dir, exist_ok=True) 
+
+    config["base_output_dir"] = base_output_dir
+
+    output_csv = os.path.join(base_output_dir, "final_results.csv")
+    output_plot = os.path.join(base_output_dir, "final_pareto_front.png") if is_multiobjective else ""
 
     config["actual_results_log_path"] = output_csv
     config["actual_pareto_plot_path"] = output_plot
-
 
     print(f"[main] Caminhos configurados:\n - CSV: {output_csv}")
     if output_plot:
@@ -145,7 +160,7 @@ if __name__ == "__main__":
 
 
     print("\n\n[main] [>] Execução do algoritmo evolutivo\n")
-    print(f"[main] Executando otimização {'multiobjetiva' if is_multiobjective else 'monoobjetiva'} com avaliador '{evaluator_name}' e estratégia '{strategy_name}'.\n")
+    print(f"[main] Executando otimização {'multiobjetiva' if is_multiobjective else 'mono-objetiva'} com avaliador '{evaluator_name}' e estratégia '{strategy_name}'.\n")
 
 
     if is_multiobjective:

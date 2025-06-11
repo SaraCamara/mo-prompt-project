@@ -7,17 +7,18 @@ from utils import (
 )
 
 def run_mono_evolution(config, dataset, initial_prompts, output_csv_path):
-    print("[mono_evolution] Iniciando execução da evolução monoobjetivo")
+    print("[mono_evolution] Iniciando execução da evolução mono-objetivo")
 
     evaluator_config = config["evaluators"][0]
     strategy_config = config["strategies"][0]
 
-    eval_log_dir = "logs/evo/prompt_eval_logs"
+    base_output_dir = config["base_output_dir"]
+    
+    eval_log_dir = os.path.join(base_output_dir, "prompt_eval_logs")
     os.makedirs(eval_log_dir, exist_ok=True)
 
-    generation_log_dir = config.get("generation_log_dir", "logs/evo/generations_detail")
+    generation_log_dir = os.path.join(base_output_dir, "generations_detail")
     os.makedirs(generation_log_dir, exist_ok=True)
-
 
     print(f"[mono_evolution] Avaliador: {evaluator_config['name']}")
     print(f"[mono_evolution] Estratégia: {strategy_config['name']}")
@@ -28,7 +29,7 @@ def run_mono_evolution(config, dataset, initial_prompts, output_csv_path):
     for i, p_text in enumerate(initial_prompts):
         print(f"[mono_evolution] Avaliando prompt inicial {i + 1}/{len(initial_prompts)}: \"{p_text[:100]}...\"")
         # Passar experiment_settings (o config completo) para evaluate_prompt
-        metrics = evaluate_prompt(p_text, dataset, evaluator_config, strategy_config, config)
+        metrics = evaluate_prompt(p_text, dataset, evaluator_config, strategy_config, config, base_output_dir)
         population.append({"prompt": p_text, "metrics": metrics})
 
     # Salva a população inicial avaliada e ordenada
@@ -114,4 +115,4 @@ def run_mono_evolution(config, dataset, initial_prompts, output_csv_path):
 
     print("[mono_evolution] Salvando resultados finais...")
     save_final_results(population, config, output_csv_path) 
-    print(f"[mono_evolution] [✓] Evolução monoobjetivo concluída. Resultados salvos em {output_csv_path}")
+    print(f"[mono_evolution] [✓] Evolução mono-objetivo concluída. Resultados salvos em {output_csv_path}")
