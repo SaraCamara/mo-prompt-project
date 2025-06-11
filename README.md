@@ -154,26 +154,26 @@ Mono-objetiva & Multi-objetiva ------>  gemma:2b & sabiazinho3 ------> zero-shot
 
 a. Modelo `gemma:2b`
 
-    Resulados iniciais: `logs/evo/gemma-b/`
+    Resulados iniciais: `logs/evo/gemma/zero-shot/final_results.csv`
 
 b. Modelo `sabiazinho-3`
 
-    Resulados iniciais: `logs/evo/sabiazinho-3/`
+    Resulados iniciais: `logs/evo/sabiazinho/zero-shot/final_results.csv`
 
 ### 2. Multi objetivo - EmoPrompt
 
 a. Modelo `gemma:2b`
 
-    Resulados iniciais: `logs/emo/gemma-b/`
+    Resulados iniciais: `logs/emo/gemma/zero-shot/final_results.csv`
 
 b. Modelo `sabiazinho-3`
 
-    Resulados iniciais: `logs/emo/sabiazinho-3/`
+    Resulados iniciais: `logs/emo/sabiazinho/zero-shot/final_results.csv`
 
 ---
 
 ## Análise dos resultados
 
-    Resulados: `results/analise_resultados.ipynb`
+    Resulados: `results/artigo_analise_resultados.ipynb`
 
 ---

@@ -1,117 +1,113 @@
+# mono_evolution.py
 import os
 import pandas as pd
+import random
 from utils import (
-    evaluate_prompt, save_generation_results, 
+    evaluate_prompt, save_generation_results,
     save_final_results, save_sorted_population,
     crossover_and_mutation_ga, roulette_wheel_selection
 )
 
 def run_mono_evolution(config, dataset, initial_prompts, output_csv_path):
-    print("[mono_evolution] Iniciando execução da evolução monoobjetivo")
+    print("[mono_evolution] Iniciando execução da evolução mono-objetivo")
 
     evaluator_config = config["evaluators"][0]
     strategy_config = config["strategies"][0]
+    population_size = config.get("population_size", 10)
 
-    eval_log_dir = "logs/evo/prompt_eval_logs"
+    # Configuração de Caminhos
+    base_output_dir = config["base_output_dir"]
+    eval_log_dir = os.path.join(base_output_dir, "prompt_eval_logs")
     os.makedirs(eval_log_dir, exist_ok=True)
-
-    generation_log_dir = config.get("generation_log_dir", "logs/evo/generations_detail")
+    generation_log_dir = os.path.join(base_output_dir, "generations_detail")
     os.makedirs(generation_log_dir, exist_ok=True)
-
 
     print(f"[mono_evolution] Avaliador: {evaluator_config['name']}")
     print(f"[mono_evolution] Estratégia: {strategy_config['name']}")
-    
+
     # Passo 1: Avaliação da População Inicial
-    print("[mono_evolution] Avaliando população inicial...")
+    print("\n[mono_evolution] Avaliando população inicial...")
     population = []
     for i, p_text in enumerate(initial_prompts):
         print(f"[mono_evolution] Avaliando prompt inicial {i + 1}/{len(initial_prompts)}: \"{p_text[:100]}...\"")
-        # Passar experiment_settings (o config completo) para evaluate_prompt
-        metrics = evaluate_prompt(p_text, dataset, evaluator_config, strategy_config, config)
+        metrics = evaluate_prompt(p_text, dataset, evaluator_config, strategy_config, config, eval_log_dir)
         population.append({"prompt": p_text, "metrics": metrics})
 
-    # Salva a população inicial avaliada e ordenada
-    save_sorted_population(population, 0, base_log_path=generation_log_dir) # Geração 0
+    save_sorted_population(population, 0, generation_log_dir)  # Geração 0
 
     # Ciclo de Gerações
     for generation in range(config["max_generations"]):
         current_generation_number = generation + 1
-        print(f"\n[mono_evolution] Geração {current_generation_number} iniciada.")
+        print(f"\n[mono_evolution]--- Geração {current_generation_number}---")
 
         try:
-            # Gerar filhos
-            num_offspring_to_generate = config["population_size"]
-            offspring_prompts_list_of_dicts = [] # Lista para armazenar os filhos gerados (dicts)
+            # Geração de Filhos com Verificação de Duplicatas
+            offspring_prompts_list_of_dicts = []
+            existing_prompts = {ind['prompt'] for ind in population}
+            
+            print(f"[mono_evolution] Gerando até {population_size} descendentes únicos...")
+            max_attempts = population_size * 3
+            attempts = 0
 
-            print(f"[mono_evolution] Gerando {num_offspring_to_generate} descendentes...")
-            for i in range(num_offspring_to_generate):
-                # Passo: Seleção de 2 pais por Roleta para CADA filho
-                # A população aqui deve ser a `population` da geração anterior.
-                pair_of_parents = roulette_wheel_selection(population, num_parents_to_select=2)
+            while len(offspring_prompts_list_of_dicts) < population_size and attempts < max_attempts:
+                attempts += 1
+                if len(population) < 2:
+                    print("[mono_evolution] [!] População de pais insuficiente. Parando de gerar filhos.")
+                    break
                 
-                if len(pair_of_parents) < 2:
-                    print(f"[mono_evolution] [!] Não foi possível selecionar 2 pais na iteração {i+1}. "
-                        "Pode ser devido a uma população pequena ou sem fitness válida. Parando de gerar filhos para esta geração.")
-                    break 
+                parent_pair = roulette_wheel_selection(population, num_parents_to_select=2)
                 
-                # Passo: Crossover e Mutação
-                # crossover_and_mutation_ga recebe a lista de 2 pais e retorna uma lista com 1 filho (dict)
-                child_dict_list = crossover_and_mutation_ga(pair_of_parents, config)
+                if len(parent_pair) < 2:
+                    # print(f"[mono_evolution] [!] Não foi possível selecionar 2 pais. Tentando novamente.")
+                    continue 
                 
-                if child_dict_list and "prompt" in child_dict_list[0] and not "erro_" in child_dict_list[0]["prompt"]:
-                    offspring_prompts_list_of_dicts.append(child_dict_list[0])
-                else:
-                    error_prompt_val = child_dict_list[0]["prompt"] if child_dict_list and "prompt" in child_dict_list[0] else "erro_desconhecido_na_geracao_filho"
-                    print(f"[mono_evolution] [!] Erro ao gerar filho {i+1} via Evo(·): {error_prompt_val}")
+                child_dict_list = crossover_and_mutation_ga(parent_pair, config)
+                
+                if child_dict_list and "prompt" in child_dict_list[0] and "erro_" not in child_dict_list[0]["prompt"]:
+                    new_prompt = child_dict_list[0]["prompt"]
+                    if new_prompt not in existing_prompts:
+                        offspring_prompts_list_of_dicts.append({"prompt": new_prompt})
+                        existing_prompts.add(new_prompt)
+                # else:
+                    # print("[mono_evolution] [!] Erro ou falha na geração do filho.")
 
             if not offspring_prompts_list_of_dicts:
-                print("[mono_evolution] [!] Nenhum descendente foi gerado com sucesso nesta geração. Pulando para a próxima.")
-                if generation == config["max_generations"] - 1:
-                    print(f"[mono_evolution] Critério de parada atingido (Geração {current_generation_number}).")
+                print("[mono_evolution] [!] Nenhum descendente único foi gerado. Pulando para a próxima geração.")
                 continue
 
+            print(f"[mono_evolution] {len(offspring_prompts_list_of_dicts)} descendentes gerados. Avaliando...")
 
-            print(f"[mono_evolution] {len(offspring_prompts_list_of_dicts)} descendentes gerados com sucesso.")
-
-            # Passo: Avaliação dos Filhos
-            print("[mono_evolution] Avaliando descendentes...")
+            # Avaliação dos Filhos
             evaluated_offspring = []
             for i, offspring_dict in enumerate(offspring_prompts_list_of_dicts):
                 offspring_prompt_text = offspring_dict["prompt"]
-                print(f"[mono_evolution] Avaliando descendente {i+1}/{len(offspring_prompts_list_of_dicts)}: \"{offspring_prompt_text[:100]}...\"")
-                metrics = evaluate_prompt(offspring_prompt_text, dataset, evaluator_config, strategy_config, config)
+                metrics = evaluate_prompt(offspring_prompt_text, dataset, evaluator_config, strategy_config, config, eval_log_dir)
                 evaluated_offspring.append({"prompt": offspring_prompt_text, "metrics": metrics})
             
-            print("[mono_evolution] Descendentes avaliados.")
-
-            # Passo: Unir Pais e Filhos, Aplicar Elitismo e Ordenação
-            # A `population` atual são os pais da geração anterior.
+            # Seleção de Sobreviventes
             combined_population = population + evaluated_offspring
-
-            # Ordenar por Acurácia (metrics[0] desc) e depois Tokens (metrics[2] asc) para desempate
-            combined_population.sort(key=lambda x: (x["metrics"][0], -x["metrics"][2] if len(x["metrics"]) >=3 else float('inf')), reverse=True)
+            combined_population.sort(key=lambda x: (x["metrics"][0], -x["metrics"][2] if len(x["metrics"]) >= 3 else float('inf')), reverse=True)
             
-            # Selecionar os melhores para a próxima geração (elitismo)
-            population = combined_population[:config["population_size"]]
-            print(f"[mono_evolution] População da próxima geração selecionada (Tamanho: {len(population)}). Melhor acurácia: {population[0]['metrics'][0]:.4f} se população não vazia.")
-
-            save_sorted_population(population, current_generation_number, base_log_path=generation_log_dir)
-            save_generation_results(population, current_generation_number, config) 
+            population = combined_population[:population_size]
             
-            # Log dos prompts gerados (apenas os textos dos prompts) para análise
-            # pd.DataFrame([p_d["prompt"] for p_d in offspring_prompts_list_of_dicts], columns=["generated_prompt_text"])\
-            #    .to_csv(os.path.join(generation_log_dir, f"generated_texts_gen_{current_generation_number}.csv"), index=False)
+            if population:
+                print(f"[mono_evolution] População da próxima geração selecionada (Tamanho: {len(population)}). Melhor acurácia: {population[0]['metrics'][0]:.4f}")
+            else:
+                print("[mono_evolution] [!] População ficou vazia após seleção.")
+
+
+            # Salvando Resultados da Geração
+            save_sorted_population(population, current_generation_number, generation_log_dir)
+            save_generation_results(population, current_generation_number, config, generation_log_dir) 
         
         except Exception as e:
             print(f"[mono_evolution] [✗] Erro na geração {current_generation_number}: {e}")
             import traceback
             traceback.print_exc()
+            continue # Continua para a próxima geração em caso de erro
 
-        if generation == config["max_generations"] - 1:
-            print(f"[mono_evolution] Critério de parada atingido (Máximo de {config['max_generations']} gerações).")
-            break
-
+    # Fim do Ciclo Evolutivo
+    print("\n[mono_evolution] Evolução mono-objetivo concluída.")
     print("[mono_evolution] Salvando resultados finais...")
     save_final_results(population, config, output_csv_path) 
-    print(f"[mono_evolution] [✓] Evolução monoobjetivo concluída. Resultados salvos em {output_csv_path}")
+    print(f"[mono_evolution] [✓] Resultados salvos em {output_csv_path}")

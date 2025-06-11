@@ -2,9 +2,10 @@ dataset_path: data/imdb_pt_subset.csv
 results_log_path: logs/final_results.csv
 
 top_k: 10
-multiobjective: true
 max_generations: 10
 population_size: 10
+stagnation_limit: 3
+k_tournament_parents: 2
 
 ollama_server_url: http://localhost:11434/api/chat 
 
@@ -42,10 +43,12 @@ generator:
     user_crossover: |
       Prompt A: "{prompt_a}"
       Prompt B: "{prompt_b}"
-      Combine os dois prompts mantendo clareza e coerência.
+      Realize uma combinação dos dois prompts, como em uma operação de crossover, mantendo clareza, coerência e o propósito original.
+
 
     user_mutation: |
-      Gere uma variação desse prompt mantendo o objetivo de classificar sentimentos com precisão:"{prompt}"
+      Assim como uma mutação que introduz variedade, gere uma variação deste prompt mantendo seu objetivo de classificar sentimentos com precisão: "{prompt}"
+      A variação pode incluir reformulação, troca de termos ou reorganização sintática.
 
 strategies:
   - name: zero-shot
@@ -73,4 +76,4 @@ strategies:
 
       Texto: "{text}"
 
-      Explicação: Analise o sentimento do seguinte texto. Primeiro explique por que é positivo ou negativo, depois informe a classificação final. Responda apenas positivo ou negativo.
+      Explicação: Analise o sentimento do seguinte texto. Primeiro explique por que é positivo ou negativo, depois informe a classificação final. Responda apenas '1' para classificações positivas ou '0' para as negativas.

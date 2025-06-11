@@ -1,18 +1,24 @@
+# utils.py
 import os
 import re
 import yaml
+import random
 import pandas as pd
 import requests
 import openai
-import random
-import numpy as np 
+import numpy as np
+import nltk
+nltk.download('punkt')
 import matplotlib.pyplot as plt
 from sklearn.metrics import accuracy_score, f1_score, precision_score, recall_score
 from nltk.tokenize import TreebankWordTokenizer
 
+
 tokenizer = TreebankWordTokenizer()
 
-# Configuração
+
+# Seção: Configuração e Carregamento de Dados
+
 def load_credentials_from_yaml(path_to_yaml="config/credentials.yaml"):
     if not os.path.exists(path_to_yaml):
         print(f"[utils] [✗] ERRO: Arquivo de credenciais '{path_to_yaml}' não encontrado. ")
@@ -69,7 +75,6 @@ def load_settings(settings_path="config/experiment_settings.yaml", credentials=N
         return None
 
 
-# Carregamento de Dados
 def load_initial_prompts(filepath):
     try:
         with open(filepath, 'r', encoding='utf-8') as f: 
@@ -96,7 +101,8 @@ def load_dataset(filepath):
         return None
 
 
-# Requisições a modelos avaliadores
+# Seção: Requisições a Modelos
+
 def query_maritalk(full_prompt, model_config):
     model_name = model_config.get("name", "sabiazinho-3")
     api_key = model_config.get("chave_api")
@@ -152,7 +158,8 @@ def query_ollama(prompt, model_config):
         return "erro_api"
 
 
-# Evolução com LLM (GPT-4o mini)
+# Seção: Operadores Evolutivos
+
 def _call_openai_api(messages, generator_config, temperature=0.7):
     local_api_key = generator_config.get("chave_api")
     local_api_base = generator_config.get("endpoint")
@@ -186,20 +193,6 @@ def _call_openai_api(messages, generator_config, temperature=0.7):
     except openai.error.AuthenticationError as e: # Erro de autenticação específico do SDK 0.28.0
         print(f"[utils] [✗] ERRO DE AUTENTICAÇÃO com a API OpenAI (SDK 0.28.0): {e}.")
         return "erro_api_gerador_autenticacao"
-    # except openai.error.APIConnectionError as e:
-    #     print(f"[utils] [✗] Erro de conexão com a API OpenAI (SDK 0.28.0) em '{openai.api_base}': {e}")
-    #     return "erro_api_gerador_conexao"
-    # except openai.error.RateLimitError as e:
-    #     print(f"[utils] [✗] Erro de limite de taxa (RateLimitError) da API OpenAI (SDK 0.28.0): {e}")
-    #     return "erro_api_gerador_limite_taxa"
-    # except openai.error.InvalidRequestError as e: 
-    #     print(f"[utils] [✗] Erro de requisição inválida para API OpenAI (SDK 0.28.0) para o modelo '{model_name}': {e}")
-    #     return f"erro_api_gerador_requisicao_invalida"
-    # except openai.error.APIError as e: 
-    #     http_status = e.http_status if hasattr(e, 'http_status') else 'N/A'
-    #     http_body = e.http_body if hasattr(e, 'http_body') else 'N/A'
-    #     print(f"[utils] [✗] Erro genérico da API OpenAI (SDK 0.28.0): Status={http_status}, Resposta={http_body}")
-    #     return f"erro_api_gerador_status_{http_status}"
     except Exception as e: # Captura quaisquer outros erros inesperados
         print(f"[utils] [✗] Erro inesperado durante a chamada da API OpenAI (SDK 0.28.0) para o modelo '{model_name}': {type(e).__name__} - {e}")
         return "erro_api_gerador_inesperado"
@@ -255,7 +248,8 @@ def crossover_and_mutation_ga(pair_of_parent_prompts, config):
         return [{"prompt": mutated_prompt}]
 
 
-# Avaliação
+# Seção: Avaliação de Prompts
+
 def evaluate_prompt_single(prompt_instruction: str, text: str, label: int,
                         evaluator_config: dict, strategy_config: dict,
                         experiment_settings: dict) -> tuple[int, str]:
@@ -276,7 +270,7 @@ def evaluate_prompt_single(prompt_instruction: str, text: str, label: int,
         return 1 - label, "erro_template_ausente_na_configuracao_da_estrategia"
 
     # Instrução para o LLM sobre o formato da resposta
-    instruction_suffix = "\nResponda apenas com a palavra 'positivo' ou 'negativo'."
+    instruction_suffix = "\nResponda apenas com '1' para resenhas positivas ou '0' para resenhas negativas."
     
     # Argumentos base para a formatação do template
     format_args = {
@@ -290,7 +284,7 @@ def evaluate_prompt_single(prompt_instruction: str, text: str, label: int,
         pass 
     
     elif strategy_name == "few-shot":
-        format_args["prompt_instruction"] = prompt_instruction + instruction_suffix.
+        format_args["prompt_instruction"] = prompt_instruction + instruction_suffix
         format_args["examples"] = strategy_config.get("examples", "")
         
     elif strategy_name == "zero-shot":
@@ -339,16 +333,15 @@ def evaluate_prompt_single(prompt_instruction: str, text: str, label: int,
         
     return prediction, response_text
 
-def evaluate_prompt(prompt_instruction, dataset, evaluator_config, strategy_config, experiment_settings):
+def evaluate_prompt(prompt_instruction, dataset, evaluator_config, strategy_config, experiment_settings, output_dir):
     predictions = []
     true_labels = dataset["label"].tolist()
     texts = dataset["text"].tolist()
 
     evaluator_name_sanitized = evaluator_config["name"].replace(":", "_").replace("/", "_")
     strategy_name_sanitized = strategy_config["name"]
-    log_dir = "logs/prompt_eval_logs"
-    os.makedirs(log_dir, exist_ok=True)
-    log_path = os.path.join(log_dir, f"eval_{evaluator_name_sanitized}_{strategy_name_sanitized}.csv")
+    os.makedirs(output_dir, exist_ok=True)
+    log_path = os.path.join(output_dir, f"eval_{evaluator_name_sanitized}_{strategy_name_sanitized}.csv")
 
     if not os.path.exists(log_path):
         with open(log_path, "w", encoding="utf-8") as log_file:
@@ -368,137 +361,91 @@ def evaluate_prompt(prompt_instruction, dataset, evaluator_config, strategy_conf
     precision = precision_score(true_labels, predictions, zero_division=0)
     recall = recall_score(true_labels, predictions, zero_division=0)
     f1 = f1_score(true_labels, predictions, zero_division=0)
-    
     tokens = count_tokens(prompt_instruction)
-
     alert_message = ""
     if precision == 0 and recall == 0 and any(p == 1 for p in predictions): # Se previu positivo mas errou todos
         alert_message = "Previsões positivas feitas, mas todas incorretas."
     elif not any(p == 1 for p in predictions) and any(l == 1 for l in true_labels): # Não previu positivo, mas havia positivos
         alert_message = "Nenhuma previsão positiva feita, mas existiam exemplos positivos."
-
     return acc, f1, tokens, alert_message
 
 def extract_label(text: str) -> int | None:
-    text_lower = text.lower().strip()
-    # Verifica frases mais explícitas primeiro
-    if "classificação: positivo" in text_lower or text_lower == "positivo":
-        return 1
-    elif "classificação: negativo" in text_lower or text_lower == "negativo":
-        return 0
-
-    # Falsos positivos (ex: "isso não é positivo" -> seria pego como positivo)
-    # A instrução no prompt é a melhor defesa.
-    if "positivo" in text_lower: # Pode precisar de mais lógica se "não positivo" for uma resposta
-        return 1
-    elif "negativo" in text_lower:
-        return 0
-    return None # Se nenhuma etiqueta clara for encontrada
+    if not isinstance(text, str):
+        return None
+    # regex para encontrar o primeiro dígito '0' ou '1' isolado na string.
+    match = re.search(r'\b(0|1)\b', text)
+    if match:
+        return int(match.group(1))
+    return None
 
 def count_tokens(prompt: str) -> int:
     return len(tokenizer.tokenize(prompt))
 
 
-#  Funções Monoobjetivo 
+# Seção: Algoritmos de Seleção (Mono e Multi)
+
 def roulette_wheel_selection(population, num_parents_to_select):
     """
     Seleciona pais da população usando o método da roleta.
-    A fitness é baseada na acurácia.
+    A fitness é baseada na acurácia (metrics[0]).
     """
-    selected_parents = []
-
     if not population:
         print("[utils] [!] População vazia para seleção por roleta.")
-        return selected_parents
+        return []
 
-    fitness_values = []
-    valid_individuals = []
-    for ind in population:
-        if "metrics" in ind and isinstance(ind["metrics"], (list, tuple)) and len(ind["metrics"]) > 0:
-            fitness = ind["metrics"][0] # Acurácia
-            if fitness >= 0: # Acurácia deve ser >= 0
-                fitness_values.append(fitness)
-                valid_individuals.append(ind)
-            else:
-                print(f"[utils] [!] Indivíduo com fitness negativa ignorado na roleta: {fitness}")
-        else:
-            print(f"[utils] [!] Indivíduo sem métrica de fitness válida ignorado na roleta: {ind.get('prompt')}")
-
+    # Filtra indivíduos com fitness válida (acurácia >= 0)
+    valid_individuals = [ind for ind in population if "metrics" in ind and ind["metrics"][0] >= 0]
     if not valid_individuals:
-        print("[utils] [!] Nenhum indivíduo com fitness válida para seleção por roleta.")
-        # Fallback: selecionar aleatoriamente da população original se não houver fitness válida.
-        if population and len(population) >= num_parents_to_select:
-            return random.sample(population, num_parents_to_select)
-        return selected_parents 
+        print("[utils] [!] Nenhum indivíduo com fitness válida para seleção.")
+        return random.sample(population, min(num_parents_to_select, len(population)))
+
+    fitness_values = [ind["metrics"][0] for ind in valid_individuals]
     total_fitness = sum(fitness_values)
 
+    # Se a fitness total for zero, todos têm a mesma chance
     if total_fitness == 0:
-        if len(valid_individuals) >= num_parents_to_select:
-            return random.sample(valid_individuals, num_parents_to_select)
-        else: 
-            return valid_individuals
+        return random.sample(valid_individuals, min(num_parents_to_select, len(valid_individuals)))
 
     probabilities = [f / total_fitness for f in fitness_values]
 
-    # Para selecionar pais, geralmente é sem reposição para um par, mas com reposição entre pares.
-    # Se num_parents_to_select é 2 e chamado isso N vezes.
-    if not probabilities or len(valid_individuals) == 0 :
-        return []
+    # Usa np.random.choice para selecionar pais. replace=False garante pais únicos.
+    num_to_sample = min(num_parents_to_select, len(valid_individuals))
+    selected_indices = np.random.choice(len(valid_individuals), size=num_to_sample, p=probabilities, replace=False)
+    
+    return [valid_individuals[i] for i in selected_indices]
 
-    # Se num_parents_to_select = 2, e diferentes:
-    if num_parents_to_select == 2 and len(valid_individuals) >= 2:
-        indices = np.random.choice(len(valid_individuals), size=num_parents_to_select, p=probabilities, replace=False)
+def tournament_selection_multiobjective(population_with_rank_and_crowding, k_tournament_size, num_to_select):
+    """
+    Seleção por torneio para pais baseada no rank de Pareto e crowding distance (estilo NSGA-II).
+    Seleciona 'num_to_select' pais.
+    """
+    selected_parents = []
+    population_size = len(population_with_rank_and_crowding)
 
-        idx1 = np.random.choice(len(valid_individuals), p=probabilities)
-        selected_parents.append(valid_individuals[idx1])
+    if population_size == 0: return []
+    if k_tournament_size > population_size: k_tournament_size = population_size 
 
-        if num_parents_to_select > 1: # Se precisar de mais um pai
-            # A roleta padrão amostra com reposição.
-            idx2 = np.random.choice(len(valid_individuals), p=probabilities)
-            # Para garantir que pai1 != pai2, se possível:
-            max_retries = 10 # Evitar loop infinito
-            count = 0
-            while idx2 == idx1 and len(valid_individuals) > 1 and count < max_retries:
-                idx2 = np.random.choice(len(valid_individuals), p=probabilities)
-                count += 1
-            selected_parents.append(valid_individuals[idx2])
-
-    elif len(valid_individuals) > 0: # Para outros casos de num_parents_to_select
-        indices = np.random.choice(len(valid_individuals), size=num_parents_to_select, p=probabilities, replace=True)
-        selected_parents = [valid_individuals[i] for i in indices]
-
-    return selected_parents
-
-def selection_accuracy(population, k, num_selected):
-    selected_parents = [] 
-    if not population: 
-        print("[utils] [!] População vazia para seleção por torneio.")
-        return []
-    if len(population) < k:
-        print(f"[utils] [!] População (tam: {len(population)}) menor que k ({k}). Usando todos os indivíduos como candidatos.")
-        k = len(population)
-
-    while len(selected_parents) < num_selected:
-        if not population: break 
+    for _ in range(num_to_select):
+        tournament_candidates_indices = random.sample(range(population_size), k_tournament_size)
+        tournament_candidates = [population_with_rank_and_crowding[i] for i in tournament_candidates_indices]
         
-        candidates = random.sample(population, k)
-        candidates.sort(key=lambda x: (x["metrics"][0], -x["metrics"][2]), reverse=True)
-        selected_parents.append(candidates[0]) 
+        best_candidate = tournament_candidates[0]
+        for i in range(1, k_tournament_size):
+            candidate = tournament_candidates[i]
+            # Compara rank (menor é melhor)
+            if candidate['rank'] < best_candidate['rank']:
+                best_candidate = candidate
+            elif candidate['rank'] == best_candidate['rank']:
+                # Se o rank é o mesmo, compara crowding distance (maior é melhor)
+                if candidate['crowding_distance'] > best_candidate['crowding_distance']:
+                    best_candidate = candidate
+        selected_parents.append(best_candidate) # Adiciona o vencedor do torneio
+        
     return selected_parents
 
-def select_population(parents, offspring, config):
-    combined = parents + offspring 
-    selected = sorted(
-        combined,
-        key=lambda x: (x["metrics"][0] if "metrics" in x and x["metrics"] else -1,
-                    -(x["metrics"][2] if "metrics" in x and x["metrics"] and len(x["metrics"]) > 2 else float('inf'))),
-        reverse=True
-    )[:config.get("population_size", 10)]
-    # print(f"[utils] População selecionada:  {selected}.")
-    return selected
 
+# Seção: Lógica NSGA-II (Multiobjetivo)
 
-# Funções Multiobjetivo
 def dominates(ind_a_objectives, ind_b_objectives):
     """
     Verifica se o indivíduo A domina o indivíduo B.
@@ -510,10 +457,6 @@ def dominates(ind_a_objectives, ind_b_objectives):
     a_is_strictly_better = (ind_a_objectives["acc"] > ind_b_objectives["acc"] or
                             ind_a_objectives["tokens"] < ind_b_objectives["tokens"])
     return a_is_better_or_equal and a_is_strictly_better
-
-def compute_pareto_front(evaluated_pop):
-    # print("[utils] Calculando fronteira de pareto.")
-    return [a for a in evaluated_pop if not any(dominates(b, a) for b in evaluated_pop if b != a)]
 
 def fast_non_dominated_sort(population_with_objectives):
     """
@@ -607,45 +550,96 @@ def compute_crowding_distance(front_individuals):
     
     return front_individuals
 
-def tournament_selection_multiobjective(population_with_rank_and_crowding, k_tournament_size, num_to_select):
+# Seção: Funções Auxiliares de Evolução (Refatoradas)
+
+def evaluate_population(prompts_to_evaluate, dataset, config):
     """
-    Seleção por torneio para pais baseada no rank de Pareto e crowding distance (estilo NSGA-II).
-    Seleciona 'num_to_select' pais.
+    Avalia uma lista de prompts e retorna uma lista de indivíduos com seus objetivos.
     """
-    selected_parents = []
-    population_size = len(population_with_rank_and_crowding)
+    evaluated_population = []
+    evaluator_config = config["evaluators"][0]
+    strategy_config = config["strategies"][0]
+    base_output_dir = config["base_output_dir"]
+    eval_log_dir = os.path.join(base_output_dir, "prompt_eval_logs")
+    os.makedirs(eval_log_dir, exist_ok=True) # <-- Garante que o diretório existe
 
-    if population_size == 0: return []
-    if k_tournament_size > population_size: k_tournament_size = population_size 
+    prompt_list = [p["prompt"] if isinstance(p, dict) else p for p in prompts_to_evaluate]
 
-    for _ in range(num_to_select):
-        tournament_candidates_indices = random.sample(range(population_size), k_tournament_size)
-        tournament_candidates = [population_with_rank_and_crowding[i] for i in tournament_candidates_indices]
+    for p_text in prompt_list:
+        metrics = evaluate_prompt(p_text, dataset, evaluator_config, strategy_config, config, eval_log_dir)
+        acc, f1, tokens, _ = metrics
+        evaluated_population.append({
+            "prompt": p_text,
+            "acc": acc,
+            "f1": f1,
+            "tokens": tokens,
+            "metrics": metrics
+        })
+    return evaluated_population
+
+def generate_unique_offspring(current_population, config):
+    """
+    Gera uma nova população de filhos únicos a partir da população de pais.
+    """
+    offspring_prompts = []
+    existing_prompts = {ind['prompt'] for ind in current_population}
+    population_size = config.get("population_size", 10)
+    k_tournament_parents = config.get("k_tournament_parents", 2)
+    max_attempts = population_size * 3
+    attempts = 0
+
+    while len(offspring_prompts) < population_size and attempts < max_attempts:
+        attempts += 1
+        if len(current_population) < 2:
+            break
+
+        parent_pair = tournament_selection_multiobjective(current_population, k_tournament_parents, 2)
+        child_dict_list = crossover_and_mutation_ga(parent_pair, config)
+
+        if child_dict_list and "prompt" in child_dict_list[0] and "erro_" not in child_dict_list[0]["prompt"]:
+            new_prompt = child_dict_list[0]["prompt"]
+            if new_prompt not in existing_prompts:
+                offspring_prompts.append({"prompt": new_prompt})
+                existing_prompts.add(new_prompt)
+
+    if len(offspring_prompts) < population_size:
+        print(f"[utils] [!] Apenas {len(offspring_prompts)} filhos únicos foram gerados.")
         
-        best_candidate = tournament_candidates[0]
-        for i in range(1, k_tournament_size):
-            candidate = tournament_candidates[i]
-            # Compara rank (menor é melhor)
-            if candidate['rank'] < best_candidate['rank']:
-                best_candidate = candidate
-            elif candidate['rank'] == best_candidate['rank']:
-                # Se o rank é o mesmo, compara crowding distance (maior é melhor)
-                if candidate['crowding_distance'] > best_candidate['crowding_distance']:
-                    best_candidate = candidate
-        selected_parents.append(best_candidate) # Adiciona o vencedor do torneio
+    return [p["prompt"] for p in offspring_prompts]
+
+def select_survivors_nsgaii(parent_population, offspring_population, population_size):
+    """
+    Combina pais e filhos e seleciona os melhores para a próxima geração (NSGA-II).
+    """
+    combined_population = parent_population + offspring_population
+    all_fronts = fast_non_dominated_sort(combined_population)
+    
+    next_generation = []
+    for front in all_fronts:
+        if not front: continue
         
-    return selected_parents
+        compute_crowding_distance(front)
+        
+        if len(next_generation) + len(front) <= population_size:
+            next_generation.extend(front)
+        else:
+            num_needed = population_size - len(next_generation)
+            front.sort(key=lambda x: x['crowding_distance'], reverse=True)
+            next_generation.extend(front[:num_needed])
+            break
+            
+    return next_generation
 
 
-# Persistência
-def save_generation_results(population, generation, config):
-    base_log_path = config.get("generation_log_dir", "logs/{objective}/generations_detail") 
-    os.makedirs(base_log_path, exist_ok=True)
+# Seção: Persistência e Salvamento de Resultados
+
+def save_generation_results(population, generation, config, output_dir):
+    os.makedirs(output_dir, exist_ok=True)
     
     evaluator_name = config.get("evaluators", [{}])[0].get("name", "unknown_model").replace(":", "_").replace("/", "_")
     strategy_name = config.get("strategies", [{}])[0].get("name", "unknown_strategy")
     
-    path = os.path.join(base_log_path, f"results_gen_{generation}_{evaluator_name}_{strategy_name}.csv")
+    path = os.path.join(output_dir, f"results_gen_{generation}_{evaluator_name}_{strategy_name}.csv")
 
     data = []
     for ind in population:
@@ -670,9 +664,9 @@ def save_generation_results(population, generation, config):
     df.to_csv(path, index=False, encoding='utf-8')
     print(f"[utils] Resultados detalhados da geração {generation} salvos em {path}")
 
-def save_sorted_population(population, generation, base_log_path="logs/{objective}/generations"):
-    os.makedirs(base_log_path, exist_ok=True)
-    sorted_log_path = os.path.join(base_log_path, f"population_sorted_gen_{generation}.csv")
+def save_sorted_population(population, generation, output_dir):
+    os.makedirs(output_dir, exist_ok=True)
+    sorted_log_path = os.path.join(output_dir, f"population_sorted_gen_{generation}.csv")
 
     data = []
     for ind in population:
@@ -770,3 +764,28 @@ def save_pareto_front_data(front_individuals, csv_path, plot_path): # Renomeado 
     plt.savefig(plot_path)
     plt.close()
     print(f"[utils] Gráfico da fronteira de Pareto salvo em {plot_path}")
+    
+    def evaluate_population(prompts_to_evaluate, dataset, config):
+        """
+        Avalia uma lista de prompts e retorna uma lista de indivíduos com seus objetivos.
+        """
+    evaluated_population = []
+    evaluator_config = config["evaluators"][0]
+    strategy_config = config["strategies"][0]
+    base_output_dir = config["base_output_dir"]
+    eval_log_dir = os.path.join(base_output_dir, "prompt_eval_logs")
+
+    prompt_list = [p["prompt"] if isinstance(p, dict) else p for p in prompts_to_evaluate]
+    
+    for p_text in prompt_list:
+        # A função evaluate_prompt agora precisa do diretório de log
+        metrics = evaluate_prompt(p_text, dataset, evaluator_config, strategy_config, config, eval_log_dir)
+        acc, f1, tokens, _ = metrics
+        evaluated_population.append({
+            "prompt": p_text,
+            "acc": acc,
+            "f1": f1,
+            "tokens": tokens,
+            "metrics": metrics # Mantém as métricas completas também, pode ser útil
+        })
+    return evaluated_population
