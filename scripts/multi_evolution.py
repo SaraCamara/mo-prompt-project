@@ -32,14 +32,13 @@ def run_multi_evolution(config, dataset, initial_prompts_text, output_csv_path, 
     # Classifica a população inicial para obter os ranks
     initial_fronts = fast_non_dominated_sort(current_population)
     
-    # ADICIONE ESTE BLOCO DE CÓDIGO AQUI
     # Calcula a crowding distance para cada fronteira da população inicial
     print("[multi_evolution] Calculando crowding distance para a população inicial...")
     for front in initial_fronts:
         compute_crowding_distance(front)
 
 
-    # O código abaixo, para salvar a fronteira de Geração 0, continua o mesmo
+    # O código abaixo, para salvar a fronteira de Geração 0
     if initial_fronts and initial_fronts[0]:
         save_pareto_front_data(
             initial_fronts[0], 

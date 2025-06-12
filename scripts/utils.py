@@ -144,7 +144,7 @@ def query_ollama(prompt, model_config):
 
 # Seção: Operadores Evolutivos
 
-def _call_openai_api(messages, generator_config, temperature=0.7):
+def _call_openai_api(messages, generator_config, temperature=0.8):
     local_api_key = generator_config.get("chave_api")
     local_api_base = generator_config.get("endpoint")
     model_name = generator_config.get("name")
@@ -201,8 +201,8 @@ def crossover_and_mutation_ga(pair_of_parent_prompts, config):
 # Seção: Avaliação de Prompts
 
 def evaluate_prompt_single(prompt_instruction: str, text: str, label: int,
-                           evaluator_config: dict, strategy_config: dict,
-                           experiment_settings: dict) -> tuple[int, str]:
+                        evaluator_config: dict, strategy_config: dict,
+                        experiment_settings: dict) -> tuple[int, str]:
     strategy_name = strategy_config.get("name", "desconhecida").lower()
     template_str = strategy_config.get("template")
     if not isinstance(prompt_instruction, str): prompt_instruction = str(prompt_instruction)
