@@ -125,7 +125,7 @@ Classificação binária de sentimento sobre resenhas de filmes (positivo ou neg
 ```mermaid
 graph LR;
 
-subgraph Estratégia de otimização
+subgraph Estratégias de otimização
     Mono-objetiva
     Multi-objetiva
     end
@@ -135,11 +135,11 @@ subgraph Modelos de avaliação
     sabiazinho3
     end
 
-subgraph Estratégia de prompting
-    zero-shot e few-shot
+subgraph Estratégias de prompting
+    zero-shot/few-shot
     end
 
-Mono-objetiva & Multi-objetiva ------>  gemma:2b & sabiazinho3 ------> zero-shot; 
+Mono-objetiva & Multi-objetiva ------>  gemma:2b & sabiazinho3 ------> zero-shot/few-shot; 
 ```
 
 **Modelo de Evolução:**
