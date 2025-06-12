@@ -112,30 +112,26 @@ except Exception as e:
     print(f"[main] Erro ao carregar o dataset '{dataset_path}': {e}. Encerrando.")
     sys.exit(1)
 
-# Carregamento da População Inicial (COM A INDENTAÇÃO CORRIGIDA)
+# Carregamento da População Inicial
 print("\n\n[main] [>] Carregamento da população inicial")
 prompts_path = "data/initial_prompts.txt"
 if os.path.exists(prompts_path):
     with open(prompts_path, "r", encoding="utf-8") as f:
-        # <-- CORREÇÃO: Esta linha foi movida para DENTRO do bloco 'with'
         initial_prompts = [line.strip() for line in f if line.strip()]
     
-    # <-- CORREÇÃO: Este bloco agora está na indentação correta, após o 'with'
     if not initial_prompts:
         print(f"[main] Arquivo de prompts '{prompts_path}' está vazio. Encerrando.")
         sys.exit(1)
     
-    # <-- CORREÇÃO: A mensagem de sucesso agora está fora do 'if not initial_prompts'
     print(f"[main] {len(initial_prompts)} prompts carregados do arquivo: {prompts_path}")
 else:
     print(f"[main] Arquivo de prompts '{prompts_path}' não encontrado. Encerrando.")
     sys.exit(1)
 
-# Configuração de Caminhos de Saída (Sem Redundância)
+# Configuração de Caminhos de Saída 
 print("\n\n[main] [>] Configurando diretório de saída para o experimento...")
 objective_path_name = "emo" if is_multiobjective else "evo"
 
-# Usa as variáveis já definidas corretamente após a seleção do usuário
 base_output_dir = os.path.join("logs", objective_path_name, output_model_name, strategy_name)
 print(f"[main] Todos os resultados e logs para esta execução serão salvos em: '{base_output_dir}'")
 os.makedirs(base_output_dir, exist_ok=True)

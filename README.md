@@ -1,6 +1,5 @@
 # emo-prompt-project
 ---
-[WIP]
 
 ### Projeto de otimização de prompts com abordagem multiobjetivo e evolutiva
 
@@ -106,7 +105,6 @@ python scripts/main.py
 2) CoT
 ```
 
-### Estabilidade:
 Instruções para consistência dos resultados em diferentes contextos ou situações. Para aplicação do estudo em outros contextos, tarefas, datasets, modelos de LLM, etc devem se atentar as alterações necessárias em:
 
 * Dataset: repositório `data/` e dataset_path em `experimentals_setting.yaml`.
@@ -138,7 +136,7 @@ subgraph Modelos de avaliação
     end
 
 subgraph Estratégia de prompting
-    zero-shot
+    zero-shot e few-shot
     end
 
 Mono-objetiva & Multi-objetiva ------>  gemma:2b & sabiazinho3 ------> zero-shot; 
@@ -154,26 +152,31 @@ Mono-objetiva & Multi-objetiva ------>  gemma:2b & sabiazinho3 ------> zero-shot
 
 a. Modelo `gemma:2b`
 
-    Resulados iniciais: `logs/evo/gemma/zero-shot/final_results.csv`
+    `logs/evo/gemma/zero-shot/final_results.csv`
+    `logs/evo/gemma/few-shot/final_results.csv`
 
 b. Modelo `sabiazinho-3`
 
-    Resulados iniciais: `logs/evo/sabiazinho/zero-shot/final_results.csv`
+    `logs/evo/sabiazinho/zero-shot/final_results.csv`
+    `logs/evo/sabiazinho/few-shot/final_results.csv`
 
 ### 2. Multi objetivo - EmoPrompt
 
 a. Modelo `gemma:2b`
 
-    Resulados iniciais: `logs/emo/gemma/zero-shot/final_results.csv`
+    `logs/emo/gemma/zero-shot/final_results.csv`
+    `logs/emo/gemma/few-shot/final_results.csv`
 
 b. Modelo `sabiazinho-3`
 
-    Resulados iniciais: `logs/emo/sabiazinho/zero-shot/final_results.csv`
+    `logs/emo/sabiazinho/zero-shot/final_results.csv`
+    `logs/emo/sabiazinho/few-shot/final_results.csv`
+    `logs/emo/sabiazinho/few-shot_top5/final_results.csv`
 
 ---
 
 ## Análise dos resultados
 
-    Resulados: `results/artigo_analise_resultados.ipynb`
+    `results/artigo_analise_resultados.ipynb`
 
 ---
