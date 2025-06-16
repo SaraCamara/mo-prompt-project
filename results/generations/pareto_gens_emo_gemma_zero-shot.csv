@@ -1,0 +1,56 @@
+generation,prompt,acc,f1,tokens,rank,crowding_distance
+0,Determine se a opinião expressa na crítica a seguir reflete um sentimento positivo ou negativo sobre o filme.,0.85,0.8314606741573034,19,0,inf
+0,Analise o texto da crítica e determine se ela transmite um sentimento de aprovação ou desaprovação.,0.81,0.7710843373493976,17,0,1.333333333333333
+0,Avalie o sentimento geral da opinião apresentada e indique se é positiva ou negativa.,0.8,0.7560975609756098,15,0,1.083333333333334
+0,Determine se a crítica expressa uma avaliação favorável ou desfavorável.,0.79,0.7469879518072289,11,0,inf
+1,Determine se a opinião expressa na crítica a seguir reflete um sentimento positivo ou negativo sobre o filme.,0.85,0.8314606741573034,19,0,inf
+1,Analise o texto da crítica e determine se ela transmite um sentimento de aprovação ou desaprovação.,0.81,0.7710843373493976,17,0,1.333333333333333
+1,Avalie o sentimento geral da opinião apresentada e indique se é positiva ou negativa.,0.8,0.7560975609756098,15,0,1.083333333333334
+1,Determine se a crítica expressa uma avaliação favorável ou desfavorável.,0.79,0.7469879518072289,11,0,inf
+2,Determine se a opinião expressa na crítica a seguir reflete um sentimento positivo ou negativo sobre o filme.,0.85,0.8314606741573034,19,0,inf
+2,"""Determine se a avaliação a seguir reflete uma opinião positiva ou negativa sobre o filme.""",0.83,0.8131868131868132,18,0,0.8333333333333326
+2,"""Examine a crítica e identifique se ela reflete uma opinião positiva ou negativa.""",0.81,0.7764705882352941,16,0,0.7083333333333324
+2,Avalie o sentimento geral da opinião apresentada e indique se é positiva ou negativa.,0.8,0.7560975609756098,15,0,0.8055555555555559
+2,Determine se a crítica expressa uma avaliação favorável ou desfavorável.,0.79,0.7469879518072289,11,0,0.930555555555556
+2,"""Classifique a opinião como positiva ou negativa.""",0.77,0.7088607594936709,10,0,inf
+3,Determine se a opinião expressa na crítica a seguir reflete um sentimento positivo ou negativo sobre o filme.,0.85,0.8314606741573034,19,0,inf
+3,"""Determine se a avaliação a seguir reflete uma opinião positiva ou negativa sobre o filme.""",0.83,0.8131868131868132,18,0,1.166666666666666
+3,"""Determine se a crítica expressa uma opinião positiva ou negativa.""",0.81,0.7710843373493976,13,0,1.0416666666666656
+3,"""Determine se a seguinte opinião é positiva ou negativa.""",0.8,0.7560975609756098,12,0,0.4722222222222225
+3,Determine se a crítica expressa uma avaliação favorável ou desfavorável.,0.79,0.7469879518072289,11,0,0.5972222222222228
+3,"""Classifique a opinião como positiva ou negativa.""",0.77,0.7088607594936709,10,0,inf
+4,Determine se a opinião expressa na crítica a seguir reflete um sentimento positivo ou negativo sobre o filme.,0.85,0.8314606741573034,19,0,inf
+4,"""Determine se a avaliação a seguir reflete uma opinião positiva ou negativa sobre o filme.""",0.83,0.8131868131868132,18,0,1.166666666666666
+4,"""Determine se a crítica expressa uma opinião positiva ou negativa.""",0.81,0.7710843373493976,13,0,1.0416666666666656
+4,"""Determine se a seguinte opinião é positiva ou negativa.""",0.8,0.7560975609756098,12,0,0.4722222222222225
+4,Determine se a crítica expressa uma avaliação favorável ou desfavorável.,0.79,0.7469879518072289,11,0,0.3611111111111114
+4,"""Determine se a opinião é positiva ou negativa.""",0.79,0.7469879518072289,11,0,0.2361111111111112
+4,"""Classifique a opinião como positiva ou negativa.""",0.77,0.7088607594936709,10,0,inf
+4,"""Classifique a avaliação como positiva ou negativa.""",0.77,0.7160493827160493,10,0,0.3611111111111114
+5,Determine se a opinião expressa na crítica a seguir reflete um sentimento positivo ou negativo sobre o filme.,0.85,0.8314606741573034,19,0,inf
+5,"""Determine se a opinião a seguir é positiva ou negativa.""",0.83,0.8,13,0,1.4027777777777772
+5,"""Determine se a seguinte opinião é positiva ou negativa.""",0.8,0.7560975609756098,12,0,0.7222222222222214
+5,Determine se a crítica expressa uma avaliação favorável ou desfavorável.,0.79,0.7469879518072289,11,0,0.3611111111111114
+5,"""Determine se a opinião é positiva ou negativa.""",0.79,0.7469879518072289,11,0,0.2361111111111112
+5,"""Classifique a opinião como positiva ou negativa.""",0.77,0.7088607594936709,10,0,inf
+5,"""Classifique a avaliação como positiva ou negativa.""",0.77,0.7160493827160493,10,0,0.3611111111111114
+6,Determine se a opinião expressa na crítica a seguir reflete um sentimento positivo ou negativo sobre o filme.,0.85,0.8314606741573034,19,0,inf
+6,"""Determine se a opinião a seguir é positiva ou negativa.""",0.83,0.8,13,0,1.4027777777777772
+6,"""Determine se a seguinte opinião é positiva ou negativa.""",0.8,0.7560975609756098,12,0,0.7222222222222214
+6,Determine se a crítica expressa uma avaliação favorável ou desfavorável.,0.79,0.7469879518072289,11,0,0.3611111111111114
+6,"""Determine se a opinião é positiva ou negativa.""",0.79,0.7469879518072289,11,0,0.2361111111111112
+6,"""Classifique a opinião como positiva ou negativa.""",0.77,0.7088607594936709,10,0,inf
+6,"""Classifique a avaliação como positiva ou negativa.""",0.77,0.7160493827160493,10,0,0.3611111111111114
+7,Determine se a opinião expressa na crítica a seguir reflete um sentimento positivo ou negativo sobre o filme.,0.85,0.8314606741573034,19,0,inf
+7,"""Determine se a opinião expressa é positiva ou negativa.""",0.83,0.8,12,0,1.6388888888888884
+7,Determine se a crítica expressa uma avaliação favorável ou desfavorável.,0.79,0.7469879518072289,11,0,0.3611111111111114
+7,"""Determine se a opinião é positiva ou negativa.""",0.79,0.7469879518072289,11,0,0.6111111111111104
+7,"""Classifique a opinião como positiva ou negativa.""",0.77,0.7088607594936709,10,0,inf
+7,"""Classifique a avaliação como positiva ou negativa.""",0.77,0.7160493827160493,10,0,0.3611111111111114
+8,Determine se a opinião expressa na crítica a seguir reflete um sentimento positivo ou negativo sobre o filme.,0.85,0.8314606741573034,19,0,inf
+8,"""Determine se a opinião expressa é positiva ou negativa.""",0.83,0.8,12,0,2.0
+8,"""Classifique este sentimento como positivo ou negativo.""",0.79,0.7407407407407407,10,0,inf
+9,"""Determine se a opinião apresentada é positiva ou negativa.""",0.85,0.8314606741573034,12,0,inf
+9,"""Classifique este sentimento como positivo ou negativo.""",0.79,0.7407407407407407,10,0,inf
+10,"""Determine se a opinião apresentada é positiva ou negativa.""",0.85,0.8314606741573034,12,0,inf
+10,"""Classifique este sentimento como positivo ou negativo.""",0.79,0.7407407407407407,10,0,inf
