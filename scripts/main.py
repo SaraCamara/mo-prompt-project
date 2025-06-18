@@ -130,7 +130,7 @@ else:
 
 # Configuração de Caminhos de Saída 
 print("\n\n[main] [>] Configurando diretório de saída para o experimento...")
-objective_path_name = "emo" if is_multiobjective else "evo"
+objective_path_name = "mop" if is_multiobjective else "evo"
 
 base_output_dir = os.path.join("logs", objective_path_name, output_model_name, strategy_name)
 print(f"[main] Todos os resultados e logs para esta execução serão salvos em: '{base_output_dir}'")

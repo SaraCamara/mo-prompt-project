@@ -1,4 +1,4 @@
-# emo-prompt-project
+# mo-prompt-project
 ---
 
 ### Projeto de otimização de prompts com abordagem multiobjetivo e evolutiva
@@ -19,7 +19,7 @@ Este projeto investiga a otimização evolutiva de prompts aplicados a tarefas d
 ### Resumo Visual da Estrutura
 
 ```
-emo-prompt-project/
+mo-prompt-project/
 ├── config/
 │   ├── credentials.yaml
 │   └── experiment_settings.yaml
@@ -27,12 +27,13 @@ emo-prompt-project/
 │   ├── imdb_pt_subset.csv
 │   └── initial_prompts.txt
 ├── logs/
-│   ├── emo/
-│   │   ├── {model}_{strategy}/
-│   │   │   └── final_results.csv
+│   ├── mop/
+│   │   ├── {model}/
+│   │   │   └── {strategy}/
+│   │   ├── generations/
 │   ├── evo/
-│   │   ├── {model}_{strategy}/
-│   │   │   └── final_results.csv
+│   │   ├── {model}/
+│   │   │   └── {strategy}/
 ├── results/
 │   └── notebooks.ipynb
 ├── scripts/
@@ -104,6 +105,23 @@ python scripts/main.py
 1) Few-Shot
 2) CoT
 ```
+---
+
+**Initial Prompts :**
+
+- `GPT-4o Mini` 
+
+```
+Instrução:
+
+Você precisa analisar algumas críticas em um banco de dados sobre filmes.
+Gere 10 prompts para de classificação de sentimentos dessas críticas, conforme os exemplos:
+
+”Determine se a avaliação do filme é positiva ou negativa.”,
+”Classifique a seguinte avaliação como boa ou ruim.”,
+”Analise o sentimento desta frase e decida se é positivo ou negativo.”
+```
+---
 
 Instruções para consistência dos resultados em diferentes contextos ou situações. Para aplicação do estudo em outros contextos, tarefas, datasets, modelos de LLM, etc devem se atentar as alterações necessárias em:
 
@@ -136,11 +154,14 @@ subgraph Modelos de avaliação
     end
 
 subgraph Estratégias de prompting
-    zero-shot/few-shot
+    zero-shot
+    few-shot
     end
 
-Mono-objetiva & Multi-objetiva ------>  gemma:2b & sabiazinho3 ------> zero-shot/few-shot; 
+Mono-objetiva & Multi-objetiva ------>  gemma:2b & sabiazinho3 ------> zero-shot & few-shot; 
 ```
+
+---
 
 **Modelo de Evolução:**
 
@@ -160,18 +181,18 @@ b. Modelo `sabiazinho-3`
     `logs/evo/sabiazinho/zero-shot/final_results.csv`
     `logs/evo/sabiazinho/few-shot/final_results.csv`
 
-### 2. Multi objetivo - EmoPrompt
+### 2. Multi objetivo - MOPrompt
 
 a. Modelo `gemma:2b`
 
-    `logs/emo/gemma/zero-shot/final_results.csv`
-    `logs/emo/gemma/few-shot/final_results.csv`
+    `logs/mop/gemma/zero-shot/final_results.csv`
+    `logs/mop/gemma/few-shot/final_results.csv`
 
 b. Modelo `sabiazinho-3`
 
-    `logs/emo/sabiazinho/zero-shot/final_results.csv`
-    `logs/emo/sabiazinho/few-shot/final_results.csv`
-    `logs/emo/sabiazinho/few-shot_top5/final_results.csv`
+    `logs/mop/sabiazinho/zero-shot/final_results.csv`
+    `logs/mop/sabiazinho/few-shot/final_results.csv`
+    `logs/mop/sabiazinho/few-shot_top5/final_results.csv`
 
 ---
 
