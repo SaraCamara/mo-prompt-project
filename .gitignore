@@ -176,15 +176,13 @@ cython_debug/
 config/credentials.yaml
 
 # Resultados e logs
-# *.csv
-*.ipynb
-logs/*
-
-# Resultados finais
+*.csv
+*.png
+# logs/*
+!logs/mop/generations/*.csv
 
 # Notebooks Jupyter
-#results/*
-!results/generations/*
+*.ipynb
 !results/artigo_analise_resultados.ipynb
 
 # Dados
