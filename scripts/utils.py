@@ -315,9 +315,14 @@ def tournament_selection_multiobjective(population_with_rank_and_crowding, k_tou
 
 # Seção: Lógica NSGA-II
 
+# def dominates(ind_a_objectives, ind_b_objectives):
+#     a_is_better_or_equal = (ind_a_objectives["acc"] >= ind_b_objectives["acc"] and ind_a_objectives["tokens"] <= ind_b_objectives["tokens"])
+#     a_is_strictly_better = (ind_a_objectives["acc"] > ind_b_objectives["acc"] or ind_a_objectives["tokens"] < ind_b_objectives["tokens"])
+#     return a_is_better_or_equal and a_is_strictly_better
+
 def dominates(ind_a_objectives, ind_b_objectives):
-    a_is_better_or_equal = (ind_a_objectives["acc"] >= ind_b_objectives["acc"] and ind_a_objectives["tokens"] <= ind_b_objectives["tokens"])
-    a_is_strictly_better = (ind_a_objectives["acc"] > ind_b_objectives["acc"] or ind_a_objectives["tokens"] < ind_b_objectives["tokens"])
+    a_is_better_or_equal = (ind_a_objectives["f1"] >= ind_b_objectives["f1"] and ind_a_objectives["tokens"] <= ind_b_objectives["tokens"])
+    a_is_strictly_better = (ind_a_objectives["f1"] > ind_b_objectives["f1"] or ind_a_objectives["tokens"] < ind_b_objectives["tokens"])
     return a_is_better_or_equal and a_is_strictly_better
 
 
@@ -353,11 +358,29 @@ def fast_non_dominated_sort(population_with_objectives):
     return fronts
 
 
+# def compute_crowding_distance(front_individuals):
+#     if not front_individuals: return []
+#     num_individuals = len(front_individuals)
+#     for ind in front_individuals: ind['crowding_distance'] = 0.0
+#     objectives = {'acc': True, 'tokens': False}
+#     for obj_key, maximize in objectives.items():
+#         sorted_front = sorted(front_individuals, key=lambda x: x[obj_key])
+#         sorted_front[0]['crowding_distance'] = float('inf')
+#         if num_individuals > 1: sorted_front[num_individuals - 1]['crowding_distance'] = float('inf')
+#         min_obj_val = sorted_front[0][obj_key]
+#         max_obj_val = sorted_front[num_individuals - 1][obj_key]
+#         range_obj = max_obj_val - min_obj_val
+#         if range_obj == 0: continue
+#         for i in range(1, num_individuals - 1):
+#             if sorted_front[i]['crowding_distance'] != float('inf'):
+#                 sorted_front[i]['crowding_distance'] += (sorted_front[i+1][obj_key] - sorted_front[i-1][obj_key]) / range_obj
+#     return front_individuals
+
 def compute_crowding_distance(front_individuals):
     if not front_individuals: return []
     num_individuals = len(front_individuals)
     for ind in front_individuals: ind['crowding_distance'] = 0.0
-    objectives = {'acc': True, 'tokens': False}
+    objectives = {'f1': True, 'tokens': False}
     for obj_key, maximize in objectives.items():
         sorted_front = sorted(front_individuals, key=lambda x: x[obj_key])
         sorted_front[0]['crowding_distance'] = float('inf')
@@ -430,6 +453,24 @@ def select_survivors_nsgaii(parent_population, offspring_population, population_
 
 # Seção: Persistência e Salvamento de Resultados
 
+# def save_generation_results(population, generation, config, output_dir):
+#     os.makedirs(output_dir, exist_ok=True)
+#     evaluator_name = config.get("evaluators", [{}])[0].get("name", "unknown_model").replace(":", "_").replace("/", "_")
+#     strategy_name = config.get("strategies", [{}])[0].get("name", "unknown_strategy")
+#     path = os.path.join(output_dir, f"results_gen_{generation}_{evaluator_name}_{strategy_name}.csv")
+#     data = []
+#     for ind in population:
+#         prompt, metrics = ind.get("prompt"), ind.get("metrics")
+#         if metrics and len(metrics) >= 4:
+#             acc, f1, tokens, alert_message = metrics[:4]
+#         else:
+#             acc, f1, tokens, alert_message = 0.0, 0.0, 0, "metrics_missing"
+#         data.append({"generation": generation, "prompt": prompt, "accuracy": acc, "f1_score": f1, "tokens": tokens, "alert": alert_message})
+#     df = pd.DataFrame(data)
+#     df = df.sort_values(by=["accuracy", "tokens"], ascending=[False, True])
+#     df.to_csv(path, index=False, encoding='utf-8')
+#     print(f"[utils] Resultados detalhados da geração {generation} salvos em {path}")
+
 def save_generation_results(population, generation, config, output_dir):
     os.makedirs(output_dir, exist_ok=True)
     evaluator_name = config.get("evaluators", [{}])[0].get("name", "unknown_model").replace(":", "_").replace("/", "_")
@@ -444,10 +485,26 @@ def save_generation_results(population, generation, config, output_dir):
             acc, f1, tokens, alert_message = 0.0, 0.0, 0, "metrics_missing"
         data.append({"generation": generation, "prompt": prompt, "accuracy": acc, "f1_score": f1, "tokens": tokens, "alert": alert_message})
     df = pd.DataFrame(data)
-    df = df.sort_values(by=["accuracy", "tokens"], ascending=[False, True])
+    df = df.sort_values(by=["f1_score", "tokens"], ascending=[False, True])
     df.to_csv(path, index=False, encoding='utf-8')
     print(f"[utils] Resultados detalhados da geração {generation} salvos em {path}")
 
+
+# def save_sorted_population(population, generation, output_dir):
+#     os.makedirs(output_dir, exist_ok=True)
+#     sorted_log_path = os.path.join(output_dir, f"population_sorted_gen_{generation}.csv")
+#     data = []
+#     for ind in population:
+#         prompt, metrics = ind.get("prompt"), ind.get("metrics")
+#         if metrics and len(metrics) >= 4:
+#             acc, f1, tokens, alert_message = ind["metrics"][:4]
+#         else:
+#             acc, f1, tokens, alert_message = 0.0, 0.0, 0, "metrics_missing"
+#         data.append({"generation": generation, "prompt": prompt, "accuracy": acc, "f1_score": f1, "tokens": tokens, "alert": alert_message})
+#     df = pd.DataFrame(data)
+#     df = df.sort_values(by=["accuracy", "tokens"], ascending=[False, True])
+#     df.to_csv(sorted_log_path, index=False, encoding='utf-8')
+#     print(f"[utils] População ordenada da geração {generation} salva em {sorted_log_path}")
 
 def save_sorted_population(population, generation, output_dir):
     os.makedirs(output_dir, exist_ok=True)
@@ -461,7 +518,7 @@ def save_sorted_population(population, generation, output_dir):
             acc, f1, tokens, alert_message = 0.0, 0.0, 0, "metrics_missing"
         data.append({"generation": generation, "prompt": prompt, "accuracy": acc, "f1_score": f1, "tokens": tokens, "alert": alert_message})
     df = pd.DataFrame(data)
-    df = df.sort_values(by=["accuracy", "tokens"], ascending=[False, True])
+    df = df.sort_values(by=["f1_score", "tokens"], ascending=[False, True])
     df.to_csv(sorted_log_path, index=False, encoding='utf-8')
     print(f"[utils] População ordenada da geração {generation} salva em {sorted_log_path}")
 
@@ -482,6 +539,34 @@ def save_final_results(population, config, output_csv_path):
     df_top_k.to_csv(output_csv_path, index=False, encoding='utf-8')
 
 
+# def save_pareto_front_data(front_individuals, csv_path, plot_path):
+#     if not front_individuals:
+#         df_empty = pd.DataFrame(columns=["prompt", "acc", "f1", "tokens", "rank", "crowding_distance"])
+#         df_empty.to_csv(csv_path, index=False)
+#         plt.figure()
+#         plt.text(0.5, 0.5, "Fronteira de Pareto Vazia", ha='center', va='center')
+#         plt.xlabel("Número de Tokens")
+#         plt.ylabel("Acurácia")
+#         plt.title("Fronteira de Pareto (Tokens vs Acurácia)")
+#         plt.savefig(plot_path)
+#         plt.close()
+#         return
+#     data_to_save = []
+#     for ind in front_individuals:
+#         data_to_save.append({"prompt": ind.get("prompt", "N/A"), "acc": ind.get("acc", 0.0), "f1": ind.get("f1", 0.0), "tokens": ind.get("tokens", 0), "rank": ind.get("rank", -1), "crowding_distance": ind.get("crowding_distance", 0.0)})
+#     df = pd.DataFrame(data_to_save)
+#     df_sorted = df.sort_values(by="acc", ascending=False)
+#     df_sorted.to_csv(csv_path, index=False, encoding='utf-8')
+#     plt.figure(figsize=(10, 6))
+#     plt.scatter(df["tokens"], df["acc"], c='blue', alpha=0.7, edgecolors='w', s=70)
+#     plt.xlabel("Número de Tokens (Menor é Melhor)")
+#     plt.ylabel("Acurácia (Maior é Melhor)")
+#     plt.title("Fronteira de Pareto (Tokens vs Acurácia)")
+#     plt.grid(True, linestyle='--', alpha=0.6)
+#     plt.savefig(plot_path)
+#     plt.close()
+#     print(f"[utils] Gráfico da fronteira de Pareto salvo em {plot_path}")
+
 def save_pareto_front_data(front_individuals, csv_path, plot_path):
     if not front_individuals:
         df_empty = pd.DataFrame(columns=["prompt", "acc", "f1", "tokens", "rank", "crowding_distance"])
@@ -489,8 +574,8 @@ def save_pareto_front_data(front_individuals, csv_path, plot_path):
         plt.figure()
         plt.text(0.5, 0.5, "Fronteira de Pareto Vazia", ha='center', va='center')
         plt.xlabel("Número de Tokens")
-        plt.ylabel("Acurácia")
-        plt.title("Fronteira de Pareto (Tokens vs Acurácia)")
+        plt.ylabel("F1 Score")
+        plt.title("Fronteira de Pareto (Tokens vs F1 Score)")
         plt.savefig(plot_path)
         plt.close()
         return
@@ -498,13 +583,13 @@ def save_pareto_front_data(front_individuals, csv_path, plot_path):
     for ind in front_individuals:
         data_to_save.append({"prompt": ind.get("prompt", "N/A"), "acc": ind.get("acc", 0.0), "f1": ind.get("f1", 0.0), "tokens": ind.get("tokens", 0), "rank": ind.get("rank", -1), "crowding_distance": ind.get("crowding_distance", 0.0)})
     df = pd.DataFrame(data_to_save)
-    df_sorted = df.sort_values(by="acc", ascending=False)
+    df_sorted = df.sort_values(by="f1", ascending=False)
     df_sorted.to_csv(csv_path, index=False, encoding='utf-8')
     plt.figure(figsize=(10, 6))
-    plt.scatter(df["tokens"], df["acc"], c='blue', alpha=0.7, edgecolors='w', s=70)
+    plt.scatter(df["tokens"], df["f1"], c='blue', alpha=0.7, edgecolors='w', s=70)
     plt.xlabel("Número de Tokens (Menor é Melhor)")
-    plt.ylabel("Acurácia (Maior é Melhor)")
-    plt.title("Fronteira de Pareto (Tokens vs Acurácia)")
+    plt.ylabel("F1 Score (Maior é Melhor)")
+    plt.title("Fronteira de Pareto (Tokens vs F1 Score)")
     plt.grid(True, linestyle='--', alpha=0.6)
     plt.savefig(plot_path)
     plt.close()
