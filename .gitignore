@@ -179,6 +179,7 @@ config/credentials.yaml
 *.csv
 *.png
 # logs/*
+logs_v0/*
 !logs/mop/generations/*.csv
 
 # Notebooks Jupyter

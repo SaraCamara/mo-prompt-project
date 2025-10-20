@@ -7,18 +7,18 @@ population_size: 10
 stagnation_limit: 3
 k_tournament_parents: 2
 
-ollama_server_url: http://localhost:11434/api/chat 
+ollama_server_url: http://0.0.0.0:11434/api/chat
 
 evaluators:
   - name: gemma:2b
     tipo: ollama
-    endpoint: http://localhost:11434/api/generate
+    endpoint: http://0.0.0.0:11434/api/generate
     linguagem: pt
     role: evaluator
 
   - name: deepseek-r1:7b
     tipo: ollama
-    endpoint: http://localhost:11434/api/generate
+    endpoint: http://0.0.0.0:11434/api/generate
     linguagem: pt
     role: evaluator
 
