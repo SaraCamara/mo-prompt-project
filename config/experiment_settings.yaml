@@ -1,4 +1,5 @@
-dataset_path: data/imdb_pt_subset.csv
+dataset_path_imdb: data/imdb_pt_subset.csv
+dataset_path_squad: data/squad_fitness_set.csv
 results_log_path: logs/final_results.csv
 
 top_k: 10
@@ -15,20 +16,18 @@ evaluators:
     endpoint: http://0.0.0.0:11434/api/generate
     linguagem: pt
     role: evaluator
-
   - name: deepseek-r1:7b
     tipo: ollama
     endpoint: http://0.0.0.0:11434/api/generate
     linguagem: pt
     role: evaluator
-
   - name: sabiazinho-3
     tipo: maritalk
     endpoint: ${sabia_url}
     chave_api: ${sabia_api_key}
     role: evaluator
 
-generator:
+generator_imdb:
   name: gpt-4o-mini
   tipo: openai
   endpoint: ${openai_api_base}
@@ -39,37 +38,31 @@ generator:
       Você é um otimizador de prompts para classificação de sentimentos (positivo ou negativo).
       Seu papel é melhorar instruções para modelos de linguagem, gerando prompts curtos, diretos e eficazes.
       Gere apenas o prompt, sem explicações ou comentários adicionais:
-
     user_crossover: |
       Prompt A: "{prompt_a}"
       Prompt B: "{prompt_b}"
       Realize uma combinação dos dois prompts, como em uma operação de crossover, mantendo clareza, coerência e o propósito original.
-
-
     user_mutation: |
       Assim como uma mutação que introduz variedade, gere uma variação deste prompt mantendo seu objetivo de classificar sentimentos com precisão: "{prompt}"
       A variação pode incluir reformulação, troca de termos ou reorganização sintática.
 
-strategies:
+strategies_imdb:
   - name: zero-shot
     template: |
       {prompt_instruction}
 
       Texto: "{text}"
-
   - name: few-shot
     examples: |
       Texto: "Esta versão de Anna Christie está em alemão. Greta Garbo interpreta Anna Christie, mas todos os outros personagens têm atores diferentes da versão em inglês. Ambos foram filmados para trás porque Garbo teve um número de seguidores na Alemanha. É uma boa história e um imperdível para os fãs de Garbo."
       Classificação: positivo
       Texto: "Além de ser chato, as cenas eram opressivas e escuras. O filme tentou retratar algum tipo de moral, mas caiu sem mensagem. Quais foram as qualidades redentoras ??Além disso, acho que não poderia fazer com que os bibliotecários pareçam mais sem glamour do que."
       Classificação: negativo
-
     template: |
       {prompt_instruction}
 
       {examples}
       Texto: "{text}"
-
   - name: cot
     template: |
       {prompt_instruction}
@@ -77,3 +70,33 @@ strategies:
       Texto: "{text}"
 
       Explicação: Analise o sentimento do seguinte texto. Primeiro explique por que é positivo ou negativo, depois informe a classificação final. Responda apenas '1' para classificações positivas ou '0' para as negativas.
+
+generator_squad:
+  name: gpt-4o-mini
+  tipo: openai
+  endpoint: ${openai_api_base}
+  chave_api: ${openai_api_key}
+  role: generator
+  template_generator:
+    system: |
+      Você é um otimizador de instruções para modelos de linguagem em tarefas de extração de respostas (Question Answering).
+      Seu papel é melhorar instruções para que o modelo extraia a resposta correta de um texto de contexto.
+      Gere apenas a instrução, sem explicações ou comentários adicionais.
+    user_crossover: |
+      Instrução A: "{prompt_a}"
+      Instrução B: "{prompt_b}"
+      Realize uma combinação das duas instruções, como em uma operação de crossover, mantendo clareza, coerência e o propósito original de extrair uma resposta de um contexto.
+    user_mutation: |
+      Assim como uma mutação que introduz variedade, gere uma variação desta instrução mantendo seu objetivo de extrair uma resposta de um contexto com precisão: "{prompt}"
+      A variação pode incluir reformulação, troca de termos ou reorganização sintática.
+
+strategies_squad:
+  - name: zero-shot_squad
+    template: |
+      [INSTRUÇÃO_VARIAVEL]
+
+      Contexto: {contexto}
+
+      Pergunta: {pergunta}
+
+      Resposta:

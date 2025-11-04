@@ -8,7 +8,7 @@ import pandas as pd
 
 from mono_evolution import run_mono_evolution
 from multi_evolution import run_multi_evolution
-from utils import load_credentials_from_yaml, load_settings
+from utils import load_credentials_from_yaml, load_settings, load_dataset
 
 # Instalação de dependências
 def install_requirements():
@@ -51,6 +51,26 @@ if __name__ == "__main__":
         print("[main] [✗] ERRO FATAL: Falha ao carregar 'experiment_settings.yaml'. Encerrando.")
         sys.exit(1)
     print("[main] [✓] Configurações principais carregadas e processadas.")
+
+    # Seleção de Tarefa (IMDB/SQuAD)
+    print("\n\n[main] [>] Selecione a tarefa a ser executada:\n  0) IMDB (Análise de Sentimentos)\n  1) SQuAD (Question Answering)")
+    while True:
+        task_input = input("Digite o número da opção desejada (0 ou 1): ")
+        if task_input in ["0", "1"]:
+            is_squad = (task_input == "1")
+            break
+        else:
+            print("[main] Opção inválida. Digite 0 ou 1.")
+    
+    task_name = "squad" if is_squad else "imdb"
+    config["task"] = task_name
+    print(f"[main] Tarefa selecionada: {task_name.upper()}")
+
+    # Carrega as configurações específicas da tarefa
+    config["dataset_path"] = config[f"dataset_path_{task_name}"]
+    config["generator"] = config[f"generator_{task_name}"]
+    config["strategies"] = config[f"strategies_{task_name}"]
+
 
     # Seleção de Modo (Mono/Multi)
     print("\n\n[main] [>] Selecione estratégia de otimização:\n  0) Mono-objetivo\n  1) Multiobjetivo")
@@ -112,45 +132,45 @@ except Exception as e:
     print(f"[main] Erro ao carregar o dataset '{dataset_path}': {e}. Encerrando.")
     sys.exit(1)
 
-# Carregamento da População Inicial
-print("\n\n[main] [>] Carregamento da população inicial")
-prompts_path = "data/initial_prompts.txt"
-if os.path.exists(prompts_path):
-    with open(prompts_path, "r", encoding="utf-8") as f:
-        initial_prompts = [line.strip() for line in f if line.strip()]
-    
-    if not initial_prompts:
-        print(f"[main] Arquivo de prompts '{prompts_path}' está vazio. Encerrando.")
+    # Carregamento da População Inicial
+    print("\n\n[main] [>] Carregamento da população inicial")
+    prompts_path = "data/initial_prompts.txt"
+    if os.path.exists(prompts_path):
+        with open(prompts_path, "r", encoding="utf-8") as f:
+            initial_prompts = [line.strip() for line in f if line.strip()]
+        
+        if not initial_prompts:
+            print(f"[main] Arquivo de prompts '{prompts_path}' está vazio. Encerrando.")
+            sys.exit(1)
+        
+        print(f"[main] {len(initial_prompts)} prompts carregados do arquivo: {prompts_path}")
+    else:
+        print(f"[main] Arquivo de prompts '{prompts_path}' não encontrado. Encerrando.")
         sys.exit(1)
-    
-    print(f"[main] {len(initial_prompts)} prompts carregados do arquivo: {prompts_path}")
-else:
-    print(f"[main] Arquivo de prompts '{prompts_path}' não encontrado. Encerrando.")
-    sys.exit(1)
 
-# Configuração de Caminhos de Saída 
-print("\n\n[main] [>] Configurando diretório de saída para o experimento...")
-objective_path_name = "mop" if is_multiobjective else "evo"
+    # Configuração de Caminhos de Saída 
+    print("\n\n[main] [>] Configurando diretório de saída para o experimento...")
+    objective_path_name = "mop" if is_multiobjective else "evo"
 
-base_output_dir = os.path.join("logs", objective_path_name, output_model_name, strategy_name)
-print(f"[main] Todos os resultados e logs para esta execução serão salvos em: '{base_output_dir}'")
-os.makedirs(base_output_dir, exist_ok=True)
+    base_output_dir = os.path.join("logs", objective_path_name, output_model_name, strategy_name)
+    print(f"[main] Todos os resultados e logs para esta execução serão salvos em: '{base_output_dir}'")
+    os.makedirs(base_output_dir, exist_ok=True)
 
-config["base_output_dir"] = base_output_dir
+    config["base_output_dir"] = base_output_dir
 
-output_csv = os.path.join(base_output_dir, "final_results.csv")
-output_plot = os.path.join(base_output_dir, "final_pareto_front.png") if is_multiobjective else ""
+    output_csv = os.path.join(base_output_dir, "final_results.csv")
+    output_plot = os.path.join(base_output_dir, "final_pareto_front.png") if is_multiobjective else ""
 
-print(f"[main] Caminhos configurados:\n - CSV: {output_csv}")
-if output_plot:
-    print(f" - Plot: {output_plot}")
+    print(f"[main] Caminhos configurados:\n - CSV: {output_csv}")
+    if output_plot:
+        print(f" - Plot: {output_plot}")
 
-# Execução do Algoritmo
-print("\n\n[main] [>] Iniciando execução do algoritmo evolutivo...\n")
+    # Execução do Algoritmo
+    print("\n\n[main] [>] Iniciando execução do algoritmo evolutivo...\n")
 
-if is_multiobjective:
-    run_multi_evolution(config, df_sample, initial_prompts, output_csv, output_plot)
-else:
-    run_mono_evolution(config, df_sample, initial_prompts, output_csv)
+    if is_multiobjective:
+        run_multi_evolution(config, df_sample, initial_prompts, output_csv, output_plot)
+    else:
+        run_mono_evolution(config, df_sample, initial_prompts, output_csv)
 
-print(f"\n[main] Execução finalizada. Resultados disponíveis em:\n - {output_csv}\n")
+    print(f"\n[main] Execução finalizada. Resultados disponíveis em:\n - {output_csv}\n")
