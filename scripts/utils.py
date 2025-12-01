@@ -1,4 +1,6 @@
 # utils.py
+import collections
+import json
 import os
 import re
 import yaml
@@ -79,16 +81,29 @@ def load_initial_prompts(filepath):
         return []
 
 
-def load_dataset(filepath):
-    try:
-        df = pd.read_csv(filepath)
-        print(f"[utils] Dataset carregado com {len(df)} registros.")
-        return df
-    except FileNotFoundError:
-        print(f"[utils] Dataset '{filepath}' não encontrado.")
+def load_dataset(config):
+    task = config.get("task")
+    filepath = config.get("dataset_path")
+
+    if not filepath or not os.path.exists(filepath):
+        print(f"[utils] ERRO: Arquivo de dataset '{filepath}' não encontrado.")
         return None
+
+    try:
+        if task == 'imdb':
+            df = pd.read_csv(filepath)
+            print(f"[utils] Dataset IMDB carregado com {len(df)} registros.")
+            return df
+        elif task == 'squad':
+            df = pd.read_csv(filepath)
+            print(f"[utils] Dataset SQuAD carregado com {len(df)} registros.")
+            return df
+        else:
+            print(f"[utils] ERRO: Tarefa '{task}' desconhecida para carregamento de dataset.")
+            return None
+
     except Exception as e:
-        print(f"[utils] Erro ao carregar dataset '{filepath}': {e}")
+        print(f"[utils] Erro ao carregar ou processar o dataset '{filepath}': {e}")
         return None
 
 
@@ -198,6 +213,64 @@ def crossover_and_mutation_ga(pair_of_parent_prompts, config):
         return [{"prompt": mutated_prompt}]
 
 
+def mop_crossover_and_mutation_ga(pair_of_parent_prompts, config):
+    """
+    Realiza Crossover e, condicionalmente, Mutação.
+    """
+    generator_config = config.get("generator")
+    
+    # Carrega a taxa de mutação do config, default 1.0 (100%)
+    evo_params = config.get("evolution_params", {})
+    mutation_rate = evo_params.get("mutation_rate", 1.0) 
+
+    if not generator_config:
+        return [{"prompt": "erro_configuracao_gerador"}]
+
+    template_generator = generator_config.get("template_generator", {})
+    system_instruction = template_generator.get("system", "Você é um otimizador de prompts.")
+    user_instruction_crossover = template_generator.get("user_crossover", "Combine: {prompt_a} e {prompt_b}")
+    user_instruction_mutation = template_generator.get("rate_user_mutation", "Mute: {prompt}")
+
+    prompt_a = pair_of_parent_prompts[0]["prompt"] if isinstance(pair_of_parent_prompts[0], dict) else pair_of_parent_prompts[0]
+    prompt_b = pair_of_parent_prompts[1]["prompt"] if isinstance(pair_of_parent_prompts[1], dict) else pair_of_parent_prompts[1]
+
+    # CROSSOVER
+    crossover_messages = [
+        {"role": "system", "content": system_instruction},
+        {"role": "user", "content": user_instruction_crossover.format(prompt_a=prompt_a, prompt_b=prompt_b)}
+    ]
+    
+    # Temperatura média para o crossover (ex: 0.5 - 0.7)
+    current_prompt = _call_openai_api(crossover_messages, generator_config, temperature=0.6)
+    
+    if "erro_" in current_prompt:
+        return [{"prompt": f"erro_crossover ({current_prompt})"}]
+
+    # MUTAÇÃO CONDICIONAL
+    # Gera um número aleatório entre 0.0 e 1.0
+    # Se for MENOR que a taxa (ex: 0.6), aplica a mutação.
+    # Caso contrário, o filho é apenas o resultado do crossover.
+    
+    if random.random() < mutation_rate:
+        # print(f"[utils] Aplicando mutação (Taxa: {mutation_rate})...")
+        mutation_messages = [
+            {"role": "system", "content": system_instruction},
+            {"role": "user", "content": user_instruction_mutation.format(prompt=current_prompt)}
+        ]
+        # Aumento de temperatura para forçar diversidade se ocorrer a mutação
+        mutated_prompt = _call_openai_api(mutation_messages, generator_config, temperature=0.9)
+        
+        if "erro_" not in mutated_prompt:
+            current_prompt = mutated_prompt
+        else:
+            return [{"prompt": f"erro_mutacao ({mutated_prompt})"}]
+    
+    # else:
+        # print(f"[utils] Mutação pulada pelo sorteio (mantendo resultado do crossover).")
+
+    return [{"prompt": current_prompt}]
+
+
 # Seção: Avaliação de Prompts
 
 def evaluate_prompt_single(prompt_instruction: str, text: str, label: int,
@@ -234,8 +307,83 @@ def evaluate_prompt_single(prompt_instruction: str, text: str, label: int,
         prediction = 1 - label
     return prediction, response_text
 
+def evaluate_prompt_single_squad(prompt_instruction: str, contexto: str, pergunta: str, executor_config: dict, strategy_config: dict) -> str:
+    template_str = strategy_config.get("template")
+    if not template_str:
+        print(f"[utils] Template não encontrado para a estratégia SQuAD.")
+        return ""
 
-def evaluate_prompt(prompt_instruction, dataset, evaluator_config, strategy_config, experiment_settings, output_dir):
+    format_args = {
+        "INSTRUÇÃO_VARIAVEL": prompt_instruction,
+        "contexto": contexto,
+        "pergunta": pergunta
+    }
+
+    try:
+        full_prompt = template_str.format(**format_args)
+    except KeyError as e:
+        print(f"[utils] ERRO DE FORMATAÇÃO para SQuAD: placeholder {e} ausente.")
+        return ""
+
+    executor_type = executor_config.get("tipo", "").lower()
+    if executor_type == "maritalk":
+        response_text = query_maritalk(full_prompt, executor_config)
+    elif executor_type == "ollama":
+        response_text = query_ollama(full_prompt, executor_config)
+    else:
+        print(f"[utils] Tipo de executor desconhecido: '{executor_type}'")
+        response_text = ""
+
+    return response_text
+
+
+
+def evaluate_prompt(prompt_instruction, dataset, executor_config, strategy_config, experiment_settings, output_dir):
+    task = experiment_settings.get("task")
+    if task == 'imdb':
+        return evaluate_prompt_imdb(prompt_instruction, dataset, executor_config, strategy_config, experiment_settings, output_dir)
+    elif task == 'squad':
+        return evaluate_prompt_squad(prompt_instruction, dataset, executor_config, strategy_config, experiment_settings, output_dir)
+    else:
+        print(f"[utils] ERRO: Tarefa de avaliação '{task}' desconhecida.")
+        return 0, 0, 0, "tarefa_desconhecida"
+
+def evaluate_prompt_squad(prompt_instruction, dataset, executor_config, strategy_config, experiment_settings, output_dir):
+    total_em = 0
+    total_f1 = 0
+    total_tokens = count_tokens(prompt_instruction)
+    
+    executor_name_sanitized = executor_config["name"].replace(":", "_").replace("/", "_")
+    strategy_name_sanitized = strategy_config["name"]
+    os.makedirs(output_dir, exist_ok=True)
+    log_path = os.path.join(output_dir, f"eval_{executor_name_sanitized}_{strategy_name_sanitized}.csv")
+
+    if not os.path.exists(log_path):
+        with open(log_path, "w", encoding="utf-8") as f:
+            f.write("prompt_instruction,contexto,pergunta,resposta_correta,llm_response,exact_match,f1_score\n")
+
+    with open(log_path, "a", encoding="utf-8") as f:
+        for index, row in dataset.iterrows():
+            contexto = row['contexto']
+            pergunta = row['pergunta']
+            resposta_correta = row['resposta_correta']
+            
+            predicted_answer = evaluate_prompt_single_squad(prompt_instruction, contexto, pergunta, executor_config, strategy_config)
+            
+            exact_match = compute_exact(resposta_correta, predicted_answer)
+            f1_score = compute_f1(resposta_correta, predicted_answer)
+            
+            total_em += exact_match
+            total_f1 += f1_score
+            
+            f.write(f'"{prompt_instruction}","{contexto.replace('"', "'''''")}","{pergunta.replace('"', "'''''")}","{resposta_correta.replace('"', "'''''")}","{predicted_answer.replace('"', "'''''")}",{exact_match},{f1_score}\n')
+
+    avg_em = total_em / len(dataset)
+    avg_f1 = total_f1 / len(dataset)
+    
+    return avg_em, avg_f1, total_tokens, ""
+
+def evaluate_prompt_imdb(prompt_instruction, dataset, executor_config, strategy_config, experiment_settings, output_dir):
     predictions, true_labels = [], dataset["label"].tolist()
     texts = dataset["text"].tolist()
     evaluator_name_sanitized = evaluator_config["name"].replace(":", "_").replace("/", "_")
@@ -267,6 +415,44 @@ def extract_label(text: str) -> int | None:
     match = re.search(r'\b(0|1)\b', text)
     if match: return int(match.group(1))
     return None
+
+
+def normalize_text(s):
+    """Lower text and remove punctuation, articles and extra whitespace."""
+    import string, re
+
+    def remove_articles(text):
+        return re.sub(r'\b(a|an|the)\b', ' ', text)
+
+    def white_space_fix(text):
+        return ' '.join(text.split())
+
+    def remove_punc(text):
+        exclude = set(string.punctuation)
+        return ''.join(ch for ch in text if ch not in exclude)
+
+    def lower(text):
+        return text.lower()
+
+    return white_space_fix(remove_articles(remove_punc(lower(s))))
+
+
+def compute_f1(a_gold, a_pred):
+    gold_toks = a_gold.split()
+    pred_toks = a_pred.split()
+    common = collections.Counter(gold_toks) & collections.Counter(pred_toks)
+    num_same = sum(common.values())
+    if num_same == 0:
+        return 0
+    precision = 1.0 * num_same / len(pred_toks)
+    recall = 1.0 * num_same / len(gold_toks)
+    f1 = (2 * precision * recall) / (precision + recall)
+    return f1
+
+
+def compute_exact(a_gold, a_pred):
+    return int(normalize_text(a_gold) == normalize_text(a_pred))
+
 
 
 def count_tokens(prompt: str) -> int:
@@ -406,7 +592,7 @@ def evaluate_population(prompts_to_evaluate, dataset, config):
     os.makedirs(eval_log_dir, exist_ok=True)
     prompt_list = [p["prompt"] if isinstance(p, dict) else p for p in prompts_to_evaluate]
     for p_text in prompt_list:
-        metrics = evaluate_prompt(p_text, dataset, evaluator_config, strategy_config, config, eval_log_dir)
+        metrics = evaluate_prompt(p_text, dataset, executor_config, strategy_config, config, eval_log_dir)
         acc, f1, tokens, _ = metrics
         evaluated_population.append({"prompt": p_text, "acc": acc, "f1": f1, "tokens": tokens, "metrics": metrics})
     return evaluated_population
@@ -423,7 +609,7 @@ def generate_unique_offspring(current_population, config):
         attempts += 1
         if len(current_population) < 2: break
         parent_pair = tournament_selection_multiobjective(current_population, k_tournament_parents, 2)
-        child_dict_list = crossover_and_mutation_ga(parent_pair, config)
+        child_dict_list = mop_crossover_and_mutation_ga(parent_pair, config)
         if child_dict_list and "prompt" in child_dict_list[0] and "erro_" not in child_dict_list[0]["prompt"]:
             new_prompt = child_dict_list[0]["prompt"]
             if new_prompt not in existing_prompts:
