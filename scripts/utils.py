@@ -213,7 +213,7 @@ def crossover_and_mutation_ga(pair_of_parent_prompts, config):
         return [{"prompt": mutated_prompt}]
 
 
-# Seção: Avaliação de Prompts
+# Seção: Avaliação de Prompts positivo/negativo
 
 def evaluate_prompt_single(prompt_instruction: str, text: str, label: int,
                         evaluator_config: dict, strategy_config: dict,
