@@ -105,32 +105,32 @@ if __name__ == "__main__":
     output_model_name = parts[0]
 
     # Seleção de Estratégia
-print("\n\n[main] [>] Selecione da estratégia de prompt:")
-available_strategies = config.get("strategies", [])
-if not available_strategies:
-    print("[main] Nenhuma estratégia definida em 'experiment_settings.yaml'. Encerrando.")
-    sys.exit(1)
+    print("\n\n[main] [>] Selecione da estratégia de prompt:")
+    available_strategies = config.get("strategies", [])
+    if not available_strategies:
+        print("[main] Nenhuma estratégia definida em 'experiment_settings.yaml'. Encerrando.")
+        sys.exit(1)
 
-for i, strategy_config in enumerate(available_strategies):
-    print(f"  {i}) {strategy_config.get('name', 'Estratégia Desconhecida')}")
+    for i, strategy_config in enumerate(available_strategies):
+        print(f"  {i}) {strategy_config.get('name', 'Estratégia Desconhecida')}")
 
-strategy_choice_idx = get_validated_numerical_input("Digite o número da opção desejada: ", len(available_strategies))
-selected_strategy_config = available_strategies[strategy_choice_idx]
-strategy_name = selected_strategy_config["name"]
-print(f"[main] Estratégia de prompt selecionada: {strategy_name}")
-config["strategies"] = [selected_strategy_config]
+    strategy_choice_idx = get_validated_numerical_input("Digite o número da opção desejada: ", len(available_strategies))
+    selected_strategy_config = available_strategies[strategy_choice_idx]
+    strategy_name = selected_strategy_config["name"]
+    print(f"[main] Estratégia de prompt selecionada: {strategy_name}")
+    config["strategies"] = [selected_strategy_config]
 
-# Carregamento de Dados
-dataset_path = config.get("dataset_path", "data/imdb_pt_subset.csv")
-if not os.path.exists(dataset_path):
-    print(f"[main] Arquivo de dataset '{dataset_path}' não encontrado. Verifique 'experiment_settings.yaml'. Encerrando.")
-    sys.exit(1)
-try:
-    df_sample = pd.read_csv(dataset_path)
-    print(f"[main] Dataset carregado: {dataset_path} ({len(df_sample)} registros)")
-except Exception as e:
-    print(f"[main] Erro ao carregar o dataset '{dataset_path}': {e}. Encerrando.")
-    sys.exit(1)
+    # Carregamento de Dados
+    dataset_path = config.get("dataset_path", "data/imdb_pt_subset.csv")
+    if not os.path.exists(dataset_path):
+        print(f"[main] Arquivo de dataset '{dataset_path}' não encontrado. Verifique 'experiment_settings.yaml'. Encerrando.")
+        sys.exit(1)
+    try:
+        df_sample = pd.read_csv(dataset_path)
+        print(f"[main] Dataset carregado: {dataset_path} ({len(df_sample)} registros)")
+    except Exception as e:
+        print(f"[main] Erro ao carregar o dataset '{dataset_path}': {e}. Encerrando.")
+        sys.exit(1)
 
     # Carregamento da População Inicial
     print("\n\n[main] [>] Carregamento da população inicial")
