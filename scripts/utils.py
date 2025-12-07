@@ -213,7 +213,65 @@ def crossover_and_mutation_ga(pair_of_parent_prompts, config):
         return [{"prompt": mutated_prompt}]
 
 
-# Seção: Avaliação de Prompts positivo/negativo
+def mop_crossover_and_mutation_ga(pair_of_parent_prompts, config):
+    """
+    Realiza Crossover e, condicionalmente, Mutação.
+    """
+    generator_config = config.get("generator")
+    
+    # Carrega a taxa de mutação do config, default 1.0 (100%)
+    evo_params = config.get("evolution_params", {})
+    mutation_rate = evo_params.get("mutation_rate", 1.0) 
+
+    if not generator_config:
+        return [{"prompt": "erro_configuracao_gerador"}]
+
+    template_generator = generator_config.get("template_generator", {})
+    system_instruction = template_generator.get("system", "Você é um otimizador de prompts.")
+    user_instruction_crossover = template_generator.get("user_crossover", "Combine: {prompt_a} e {prompt_b}")
+    user_instruction_mutation = template_generator.get("rate_user_mutation", "Mute: {prompt}")
+
+    prompt_a = pair_of_parent_prompts[0]["prompt"] if isinstance(pair_of_parent_prompts[0], dict) else pair_of_parent_prompts[0]
+    prompt_b = pair_of_parent_prompts[1]["prompt"] if isinstance(pair_of_parent_prompts[1], dict) else pair_of_parent_prompts[1]
+
+    # CROSSOVER
+    crossover_messages = [
+        {"role": "system", "content": system_instruction},
+        {"role": "user", "content": user_instruction_crossover.format(prompt_a=prompt_a, prompt_b=prompt_b)}
+    ]
+    
+    # Temperatura média para o crossover (ex: 0.5 - 0.7)
+    current_prompt = _call_openai_api(crossover_messages, generator_config, temperature=0.6)
+    
+    if "erro_" in current_prompt:
+        return [{"prompt": f"erro_crossover ({current_prompt})"}]
+
+    # MUTAÇÃO CONDICIONAL
+    # Gera um número aleatório entre 0.0 e 1.0
+    # Se for MENOR que a taxa (ex: 0.6), aplica a mutação.
+    # Caso contrário, o filho é apenas o resultado do crossover.
+    
+    if random.random() < mutation_rate:
+        # print(f"[utils] Aplicando mutação (Taxa: {mutation_rate})...")
+        mutation_messages = [
+            {"role": "system", "content": system_instruction},
+            {"role": "user", "content": user_instruction_mutation.format(prompt=current_prompt)}
+        ]
+        # Aumento de temperatura para forçar diversidade se ocorrer a mutação
+        mutated_prompt = _call_openai_api(mutation_messages, generator_config, temperature=0.9)
+        
+        if "erro_" not in mutated_prompt:
+            current_prompt = mutated_prompt
+        else:
+            return [{"prompt": f"erro_mutacao ({mutated_prompt})"}]
+    
+    # else:
+        # print(f"[utils] Mutação pulada pelo sorteio (mantendo resultado do crossover).")
+
+    return [{"prompt": current_prompt}]
+
+
+# Seção: Avaliação de Prompts
 
 def evaluate_prompt_single(prompt_instruction: str, text: str, label: int,
                         evaluator_config: dict, strategy_config: dict,
@@ -551,7 +609,7 @@ def generate_unique_offspring(current_population, config):
         attempts += 1
         if len(current_population) < 2: break
         parent_pair = tournament_selection_multiobjective(current_population, k_tournament_parents, 2)
-        child_dict_list = crossover_and_mutation_ga(parent_pair, config)
+        child_dict_list = mop_crossover_and_mutation_ga(parent_pair, config)
         if child_dict_list and "prompt" in child_dict_list[0] and "erro_" not in child_dict_list[0]["prompt"]:
             new_prompt = child_dict_list[0]["prompt"]
             if new_prompt not in existing_prompts:

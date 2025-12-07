@@ -41,9 +41,12 @@ generator_imdb:
     user_crossover: |
       Prompt A: "{prompt_a}"
       Prompt B: "{prompt_b}"
-      Realize uma combinação dos dois prompts, como em uma operação de crossover, mantendo clareza, coerência e o propósito original.
+      Realize uma combinação dos dois prompts, como em uma operação de crossover, mantendo clareade, coerência e o propósito original.
     user_mutation: |
       Assim como uma mutação que introduz variedade, gere uma variação deste prompt mantendo seu objetivo de classificar sentimentos com precisão: "{prompt}"
+      A variação pode incluir reformulação, troca de termos ou reorganização sintática.
+    rate_user_mutation: |
+      Assim como uma mutação que introduz variedade, reescreva este prompt de forma totalmente diferente, mudando a estrutura e o tom, mas mantendo o objetivo de classificação: "{prompt}"
       A variação pode incluir reformulação, troca de termos ou reorganização sintática.
 
 strategies_imdb:

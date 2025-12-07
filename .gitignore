@@ -181,6 +181,7 @@ config/credentials.yaml
 # logs/*
 logs_v0/*
 !logs/mop/generations/*.csv
+backup/
 
 # Notebooks Jupyter
 *.ipynb
