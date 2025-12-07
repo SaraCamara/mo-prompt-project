@@ -551,7 +551,7 @@ def generate_unique_offspring(current_population, config):
         attempts += 1
         if len(current_population) < 2: break
         parent_pair = tournament_selection_multiobjective(current_population, k_tournament_parents, 2)
-        child_dict_list = crossover_and_mutation_ga(parent_pair, config)
+        child_dict_list = mop_crossover_and_mutation_ga(parent_pair, config)
         if child_dict_list and "prompt" in child_dict_list[0] and "erro_" not in child_dict_list[0]["prompt"]:
             new_prompt = child_dict_list[0]["prompt"]
             if new_prompt not in existing_prompts:

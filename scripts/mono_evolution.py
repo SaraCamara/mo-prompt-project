@@ -86,12 +86,16 @@ def run_mono_evolution(config, dataset, initial_prompts, output_csv_path):
             
             # Seleção de Sobreviventes
             combined_population = population + evaluated_offspring
-            combined_population.sort(key=lambda x: (x["metrics"][0], -x["metrics"][2] if len(x["metrics"]) >= 3 else float('inf')), reverse=True)
+            # Acurácia
+            # combined_population.sort(key=lambda x: (x["metrics"][0], -x["metrics"][2] if len(x["metrics"]) >= 3 else float('inf')), reverse=True)
+            # F1_Score
+            combined_population.sort(key=lambda x: (x["metrics"][1], -x["metrics"][2] if len(x["metrics"]) >= 3 else float('inf')), reverse=True)
             
             population = combined_population[:population_size]
             
             if population:
-                print(f"[mono_evolution] População da próxima geração selecionada (Tamanho: {len(population)}). Melhor acurácia: {population[0]['metrics'][0]:.4f}")
+                #print(f"[mono_evolution] População da próxima geração selecionada (Tamanho: {len(population)}). Melhor acurácia: {population[0]['metrics'][0]:.4f}")
+                print(f"[mono_evolution] População da próxima geração selecionada (Tamanho: {len(population)}). Melhor f1_score: {population[0]['metrics'][1]:.4f}")
             else:
                 print("[mono_evolution] [!] População ficou vazia após seleção.")
 
