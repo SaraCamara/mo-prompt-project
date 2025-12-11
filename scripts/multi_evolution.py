@@ -20,14 +20,22 @@ def run_multi_evolution(config, dataset, initial_prompts_text, output_csv_path, 
     base_output_dir = config["base_output_dir"]
     per_generation_pareto_log_dir = os.path.join(base_output_dir, "per_generation_pareto")
     os.makedirs(per_generation_pareto_log_dir, exist_ok=True)
+    executor_config = evaluator_config # Para passar para a função de avaliação
 
     print(f"[multi_evolution] Avaliador: {evaluator_config['name']}")
     print(f"[multi_evolution] Estratégia: {strategy_config['name']}")
 
     # Passo 1: Avaliação da População Inicial (P_0)
     print("\n[multi_evolution] Avaliando população inicial...")
-    current_population = evaluate_population(initial_prompts_text, dataset, config)
+    current_population = evaluate_population(initial_prompts_text, dataset, config, executor_config)
     print(f"[multi_evolution] População inicial avaliada. Tamanho: {len(current_population)}")
+
+    # Log para acompanhar os scores de cada indivíduo
+    print("[multi_evolution] Scores da população inicial:")
+    for i, ind in enumerate(current_population):
+        # Usando .get() para evitar erros caso uma chave não exista
+        print(f"  - Prompt: \"{ind.get('prompt', 'N/A')}\" | F1: {ind.get('f1', 0.0):.4f} | Acc: {ind.get('acc', 0.0):.4f} | Tokens: {ind.get('tokens', 0)}")
+
 
     # Classifica a população inicial para obter os ranks
     initial_fronts = fast_non_dominated_sort(current_population)
@@ -59,7 +67,7 @@ def run_multi_evolution(config, dataset, initial_prompts_text, output_csv_path, 
         if not offspring_prompts:
             print("[multi_evolution] [!] Nenhum filho único foi gerado nesta geração.")
         
-        evaluated_offspring = evaluate_population(offspring_prompts, dataset, config)
+        evaluated_offspring = evaluate_population(offspring_prompts, dataset, config, executor_config)
         
         current_population = select_survivors_nsgaii(current_population, evaluated_offspring, population_size)
         print(f"[multi_evolution] Nova população selecionada. Tamanho: {len(current_population)}")

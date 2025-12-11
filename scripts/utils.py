@@ -307,35 +307,41 @@ def evaluate_prompt_single(prompt_instruction: str, text: str, label: int,
         prediction = 1 - label
     return prediction, response_text
 
-def evaluate_prompt_single_squad(prompt_instruction: str, contexto: str, pergunta: str, executor_config: dict, strategy_config: dict) -> str:
+def evaluate_prompt_single_squad(prompt_instruction: str, context: str, question: str, executor_config: dict, strategy_config: dict) -> str:
     template_str = strategy_config.get("template")
+    
     if not template_str:
         print(f"[utils] Template não encontrado para a estratégia SQuAD.")
         return ""
 
     format_args = {
-        "INSTRUÇÃO_VARIAVEL": prompt_instruction,
-        "contexto": contexto,
-        "pergunta": pergunta
+        "prompt_instruction": prompt_instruction, # Era "INSTRUÇÃO_VARIAVEL"
+        "context": context,                       # Era "Contexto"
+        "question": question                      # Era "Pergunta"
     }
 
     try:
+        # Tenta formatar. Se o template tiver chaves extras ou faltantes, vai dar erro.
         full_prompt = template_str.format(**format_args)
+        
+        # Lógica de chamada ao LLM, similar à da tarefa IMDB
+        evaluator_type = executor_config.get("tipo", "").lower()
+        if evaluator_type == "maritalk":
+            return query_maritalk(full_prompt, executor_config)
+        elif evaluator_type == "ollama":
+            return query_ollama(full_prompt, executor_config)
+        return "erro_tipo_avaliador_desconhecido"
+
     except KeyError as e:
-        print(f"[utils] ERRO DE FORMATAÇÃO para SQuAD: placeholder {e} ausente.")
+        print(f"[utils] ERRO DE FORMATAÇÃO para SQuAD: placeholder '{e.args[0]}' ausente no dicionário de argumentos.")
+        # Debug: Imprima o template para ver o que ele está esperando
+        print(f"Template esperado: {template_str}") 
         return ""
-
-    executor_type = executor_config.get("tipo", "").lower()
-    if executor_type == "maritalk":
-        response_text = query_maritalk(full_prompt, executor_config)
-    elif executor_type == "ollama":
-        response_text = query_ollama(full_prompt, executor_config)
-    else:
-        print(f"[utils] Tipo de executor desconhecido: '{executor_type}'")
-        response_text = ""
-
-    return response_text
-
+    except Exception as e:
+        print(f"[utils] Erro inesperado ao formatar prompt: {e}")
+        return ""
+    
+    
 
 
 def evaluate_prompt(prompt_instruction, dataset, executor_config, strategy_config, experiment_settings, output_dir):
@@ -360,30 +366,30 @@ def evaluate_prompt_squad(prompt_instruction, dataset, executor_config, strategy
 
     if not os.path.exists(log_path):
         with open(log_path, "w", encoding="utf-8") as f:
-            f.write("prompt_instruction,contexto,pergunta,resposta_correta,llm_response,exact_match,f1_score\n")
+            f.write("prompt_instruction,context,question,correct_answer,llm_response,exact_match,f1_score\n")
 
     with open(log_path, "a", encoding="utf-8") as f:
         for index, row in dataset.iterrows():
-            contexto = row['contexto']
-            pergunta = row['pergunta']
-            resposta_correta = row['resposta_correta']
+            context = row['context']
+            question = row['question']
+            correct_answer = row['correct_answer']
             
-            predicted_answer = evaluate_prompt_single_squad(prompt_instruction, contexto, pergunta, executor_config, strategy_config)
+            predicted_answer = evaluate_prompt_single_squad(prompt_instruction, context, question, executor_config, strategy_config)
             
-            exact_match = compute_exact(resposta_correta, predicted_answer)
-            f1_score = compute_f1(resposta_correta, predicted_answer)
+            exact_match = compute_exact(correct_answer, predicted_answer)
+            f1_score = compute_f1(correct_answer, predicted_answer)
             
             total_em += exact_match
             total_f1 += f1_score
             
-            f.write(f'"{prompt_instruction}","{contexto.replace('"', "'''''")}","{pergunta.replace('"', "'''''")}","{resposta_correta.replace('"', "'''''")}","{predicted_answer.replace('"', "'''''")}",{exact_match},{f1_score}\n')
+            f.write(f'"{prompt_instruction}","{context.replace('"', "'''''")}","{question.replace('"', "'''''")}","{correct_answer.replace('"', "'''''")}","{predicted_answer.replace('"', "'''''")}",{exact_match},{f1_score}\n')
 
     avg_em = total_em / len(dataset)
     avg_f1 = total_f1 / len(dataset)
     
     return avg_em, avg_f1, total_tokens, ""
 
-def evaluate_prompt_imdb(prompt_instruction, dataset, executor_config, strategy_config, experiment_settings, output_dir):
+def evaluate_prompt_imdb(prompt_instruction, dataset, evaluator_config, strategy_config, experiment_settings, output_dir):
     predictions, true_labels = [], dataset["label"].tolist()
     texts = dataset["text"].tolist()
     evaluator_name_sanitized = evaluator_config["name"].replace(":", "_").replace("/", "_")
@@ -583,7 +589,7 @@ def compute_crowding_distance(front_individuals):
 
 # Seção: Funções Auxiliares de Evolução
 
-def evaluate_population(prompts_to_evaluate, dataset, config):
+def evaluate_population(prompts_to_evaluate, dataset, config, executor_config):
     evaluated_population = []
     evaluator_config = config["evaluators"][0]
     strategy_config = config["strategies"][0]
@@ -652,10 +658,10 @@ def select_survivors_nsgaii(parent_population, offspring_population, population_
 #         else:
 #             acc, f1, tokens, alert_message = 0.0, 0.0, 0, "metrics_missing"
 #         data.append({"generation": generation, "prompt": prompt, "accuracy": acc, "f1_score": f1, "tokens": tokens, "alert": alert_message})
-#     df = pd.DataFrame(data)
-#     df = df.sort_values(by=["accuracy", "tokens"], ascending=[False, True])
-#     df.to_csv(path, index=False, encoding='utf-8')
-#     print(f"[utils] Resultados detalhados da geração {generation} salvos em {path}")
+    df = pd.DataFrame(data)
+    df = df.sort_values(by=["f1_score", "tokens"], ascending=[False, True])
+    df.to_csv(path, index=False, encoding='utf-8')
+    print(f"[utils] Resultados detalhados da geração {generation} salvos em {path}")
 
 def save_generation_results(population, generation, config, output_dir):
     os.makedirs(output_dir, exist_ok=True)
@@ -687,10 +693,10 @@ def save_generation_results(population, generation, config, output_dir):
 #         else:
 #             acc, f1, tokens, alert_message = 0.0, 0.0, 0, "metrics_missing"
 #         data.append({"generation": generation, "prompt": prompt, "accuracy": acc, "f1_score": f1, "tokens": tokens, "alert": alert_message})
-#     df = pd.DataFrame(data)
-#     df = df.sort_values(by=["accuracy", "tokens"], ascending=[False, True])
-#     df.to_csv(sorted_log_path, index=False, encoding='utf-8')
-#     print(f"[utils] População ordenada da geração {generation} salva em {sorted_log_path}")
+    df = pd.DataFrame(data)
+    df = df.sort_values(by=["f1_score", "tokens"], ascending=[False, True])
+    df.to_csv(sorted_log_path, index=False, encoding='utf-8')
+    print(f"[utils] População ordenada da geração {generation} salva em {sorted_log_path}")
 
 def save_sorted_population(population, generation, output_dir):
     os.makedirs(output_dir, exist_ok=True)
