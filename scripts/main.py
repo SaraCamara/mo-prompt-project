@@ -42,18 +42,18 @@ if __name__ == "__main__":
     install_requirements()
     credentials = load_credentials_from_yaml("config/credentials.yaml")
     if not credentials:
-        print("[main] [✗] ERRO FATAL: Falha ao carregar 'credentials.yaml'. Encerrando.")
+        print("[main] ERRO FATAL: Falha ao carregar 'credentials.yaml'. Encerrando.")
         sys.exit(1)
-    print("[main] [✓] Credenciais carregadas.")
+    print("[main] Credenciais carregadas.")
 
     config = load_settings("config/experiment_settings.yaml", credentials)
     if not config:
-        print("[main] [✗] ERRO FATAL: Falha ao carregar 'experiment_settings.yaml'. Encerrando.")
+        print("[main] ERRO FATAL: Falha ao carregar 'experiment_settings.yaml'. Encerrando.")
         sys.exit(1)
-    print("[main] [✓] Configurações principais carregadas e processadas.")
+    print("[main] Configurações principais carregadas e processadas.")
 
-    # Seleção de Tarefa (IMDB/SQuAD)
-    print("\n\n[main] [>] Selecione a tarefa a ser executada:\n  0) IMDB (Análise de Sentimentos)\n  1) SQuAD (Question Answering)")
+    # Seleção de dados para tarefa (IMDB/SQuAD)
+    print("\n\n[main] [>] Selecione a tarefa a ser executada:\n  0) Análise de Sentimentos - IMDB-PT \n  1) Perguntas e Respostas - SQuAD-PT")
     while True:
         task_input = input("Digite o número da opção desejada (0 ou 1): ")
         if task_input in ["0", "1"]:
@@ -70,6 +70,35 @@ if __name__ == "__main__":
     config["dataset_path"] = config[f"dataset_path_{task_name}"]
     config["generator"] = config[f"generator_{task_name}"]
     config["strategies"] = config[f"strategies_{task_name}"]
+    
+    
+    # Carregamento de Dados
+    dataset_path = config.get("dataset_path", [])
+    if not os.path.exists(dataset_path):
+        print(f"[main] Arquivo de dataset '{dataset_path}' não encontrado. Verifique 'experiment_settings.yaml'. Encerrando.")
+        sys.exit(1)
+    try:
+        df_sample = pd.read_csv(dataset_path)
+        print(f"[main] Dataset carregado: {dataset_path} ({len(df_sample)} registros)")
+    except Exception as e:
+        print(f"[main] Erro ao carregar o dataset '{dataset_path}': {e}. Encerrando.")
+        sys.exit(1)
+
+    # Carregamento da População Inicial
+    print("\n\n[main] [>] Carregamento da população inicial")
+    prompts_path = f"data/initial_prompts_{task_name}.txt"
+    if os.path.exists(prompts_path):
+        with open(prompts_path, "r", encoding="utf-8") as f:
+            initial_prompts = [line.strip() for line in f if line.strip()]
+        
+        if not initial_prompts:
+            print(f"[main] Arquivo de prompts '{prompts_path}' está vazio. Encerrando.")
+            sys.exit(1)
+        
+        print(f"[main] {len(initial_prompts)} prompts carregados do arquivo: {prompts_path}")
+    else:
+        print(f"[main] Arquivo de prompts '{prompts_path}' não encontrado. Encerrando.")
+        sys.exit(1)
 
 
     # Seleção de Modo (Mono/Multi)
@@ -83,6 +112,7 @@ if __name__ == "__main__":
             print("[main] Opção inválida. Digite 0 ou 1.")
     config["objective"] = "multiobjetivo" if is_multiobjective else "mono-objetivo"
     print(f"[main] Tipo de otimização selecionado: [{config['objective'].capitalize()}]")
+
 
     # Seleção de Avaliador
     print("\n\n[main] [>] Selecione do modelo avaliador:")
@@ -104,6 +134,7 @@ if __name__ == "__main__":
     parts = re.split(r'[:/_-]', evaluator_name)
     output_model_name = parts[0]
 
+
     # Seleção de Estratégia
     print("\n\n[main] [>] Selecione da estratégia de prompt:")
     available_strategies = config.get("strategies", [])
@@ -120,33 +151,6 @@ if __name__ == "__main__":
     print(f"[main] Estratégia de prompt selecionada: {strategy_name}")
     config["strategies"] = [selected_strategy_config]
 
-    # Carregamento de Dados
-    dataset_path = config.get("dataset_path", "data/imdb_pt_subset.csv")
-    if not os.path.exists(dataset_path):
-        print(f"[main] Arquivo de dataset '{dataset_path}' não encontrado. Verifique 'experiment_settings.yaml'. Encerrando.")
-        sys.exit(1)
-    try:
-        df_sample = pd.read_csv(dataset_path)
-        print(f"[main] Dataset carregado: {dataset_path} ({len(df_sample)} registros)")
-    except Exception as e:
-        print(f"[main] Erro ao carregar o dataset '{dataset_path}': {e}. Encerrando.")
-        sys.exit(1)
-
-    # Carregamento da População Inicial
-    print("\n\n[main] [>] Carregamento da população inicial")
-    prompts_path = "data/initial_prompts.txt"
-    if os.path.exists(prompts_path):
-        with open(prompts_path, "r", encoding="utf-8") as f:
-            initial_prompts = [line.strip() for line in f if line.strip()]
-        
-        if not initial_prompts:
-            print(f"[main] Arquivo de prompts '{prompts_path}' está vazio. Encerrando.")
-            sys.exit(1)
-        
-        print(f"[main] {len(initial_prompts)} prompts carregados do arquivo: {prompts_path}")
-    else:
-        print(f"[main] Arquivo de prompts '{prompts_path}' não encontrado. Encerrando.")
-        sys.exit(1)
 
     # Configuração de Caminhos de Saída 
     print("\n\n[main] [>] Configurando diretório de saída para o experimento...")
@@ -164,7 +168,8 @@ if __name__ == "__main__":
     print(f"[main] Caminhos configurados:\n - CSV: {output_csv}")
     if output_plot:
         print(f" - Plot: {output_plot}")
-
+        
+        
     # Execução do Algoritmo
     print("\n\n[main] [>] Iniciando execução do algoritmo evolutivo...\n")
 
@@ -174,3 +179,5 @@ if __name__ == "__main__":
         run_mono_evolution(config, df_sample, initial_prompts, output_csv)
 
     print(f"\n[main] Execução finalizada. Resultados disponíveis em:\n - {output_csv}\n")
+    
+    
