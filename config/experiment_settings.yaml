@@ -16,6 +16,16 @@ evaluators:
     endpoint: http://0.0.0.0:11434/api/generate
     linguagem: pt
     role: evaluator
+  - name: qwen2.5:7b
+    tipo: ollama
+    endpoint: http://0.0.0.0:11434/api/generate
+    linguagem: pt
+    role: evaluator
+  - name: llama3.1
+    tipo: ollama
+    endpoint: http://0.0.0.0:11434/api/generate
+    linguagem: pt
+    role: evaluator
   - name: deepseek-r1:7b
     tipo: ollama
     endpoint: http://0.0.0.0:11434/api/generate
@@ -66,13 +76,13 @@ strategies_imdb:
 
       {examples}
       Texto: "{text}"
-  - name: cot
-    template: |
-      {prompt_instruction}
+  # - name: cot
+  #   template: |
+  #     {prompt_instruction}
 
-      Texto: "{text}"
+  #     Texto: "{text}"
 
-      Explicação: Analise o sentimento do seguinte texto. Primeiro explique por que é positivo ou negativo, depois informe a classificação final. Responda apenas '1' para classificações positivas ou '0' para as negativas.
+  #     Explicação: Analise o sentimento do seguinte texto. Primeiro explique por que é positivo ou negativo, depois informe a classificação final. Responda apenas '1' para classificações positivas ou '0' para as negativas.
 
 generator_squad:
   name: gpt-4o-mini
@@ -89,17 +99,42 @@ generator_squad:
       Instrução A: "{prompt_a}"
       Instrução B: "{prompt_b}"
       Realize uma combinação das duas instruções, como em uma operação de crossover, mantendo clareza, coerência e o propósito original de extrair uma resposta de um contexto.
-    user_mutation: |
-      Assim como uma mutação que introduz variedade, gere uma variação desta instrução mantendo seu objetivo de extrair uma resposta de um contexto com precisão: "{prompt}"
+    rate_user_mutation: |
+      Assim como uma mutação que introduz variedade, reescreva este prompt de forma totalmente diferente, mudando a estrutura e o tom mantendo seu objetivo de extrair uma resposta de um contexto com precisão: "{prompt}"
       A variação pode incluir reformulação, troca de termos ou reorganização sintática.
 
 strategies_squad:
-  - name: zero-shot_squad
+  - name: zero-shot
     template: |
-      [INSTRUÇÃO_VARIAVEL]
+      {prompt_instruction}
+      Sua tarefa é extrair a resposta exata do texto abaixo. A resposta deve ser um trecho copiado diretamente do contexto, sem nenhuma palavra ou explicação adicional.
+      Contexto: "{context}"
+      Pergunta: "{question}"
 
-      Contexto: {contexto}
+  - name: few-shot
+    examples: |
+      Contexto: "A Amazônia é a maior floresta tropical do mundo, cobrindo grande parte do noroeste do Brasil e estendendo-se até a Colômbia, Peru e outros países da América do Sul. É famosa por sua biodiversidade."
+      Pergunta: "Qual é a maior floresta tropical do mundo?"
+      Resposta: "A Amazônia"
+      
+      ---
+      
+      Contexto: "Nikola Tesla (1856–1943) foi um inventor, engenheiro eletrotécnico e engenheiro mecânico sérvio-americano, mais conhecido por suas contribuições ao projeto do moderno sistema de fornecimento de eletricidade em corrente alternada (CA)."
+      Pergunta: "Em que ano Nikola Tesla morreu?"
+      Resposta: "1943"
+      
+      ---
+      
+      Contexto: "O futebol é o esporte mais popular do Brasil. A seleção brasileira ganhou a Copa do Mundo da FIFA cinco vezes, mais do que qualquer outra nação."
+      Pergunta: "Quantas vezes o Brasil ganhou a Copa do Mundo?"
+      Resposta: "cinco vezes"
+    template: |
+      {prompt_instruction}
 
-      Pergunta: {pergunta}
+      {examples}
+      
+      ---
 
+      Context: "{context}"
+      Pergunta: "{question}"
       Resposta:
