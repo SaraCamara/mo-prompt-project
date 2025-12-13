@@ -8,6 +8,7 @@ import random
 import pandas as pd
 import requests
 import openai
+import concurrent.futures
 import numpy as np
 import matplotlib.pyplot as plt
 from sklearn.metrics import accuracy_score, f1_score, precision_score, recall_score
@@ -358,6 +359,9 @@ def evaluate_prompt_squad(prompt_instruction, dataset, executor_config, strategy
     total_em = 0
     total_f1 = 0
     total_tokens = count_tokens(prompt_instruction)
+
+    # Configure o número máximo de workers. Ajuste este valor com base nos limites de taxa da API
+    MAX_WORKERS = 10
     
     executor_name_sanitized = executor_config["name"].replace(":", "_").replace("/", "_")
     strategy_name_sanitized = strategy_config["name"]
@@ -367,22 +371,42 @@ def evaluate_prompt_squad(prompt_instruction, dataset, executor_config, strategy
     if not os.path.exists(log_path):
         with open(log_path, "w", encoding="utf-8") as f:
             f.write("prompt_instruction,context,question,correct_answer,llm_response,exact_match,f1_score\n")
+    
+    # Prepare tasks for parallel execution, maintaining original order
+    original_data_points = []
+    for index, row in dataset.iterrows():
+        original_data_points.append({
+            'context': row['context'],
+            'question': row['question'],
+            'correct_answer': row['correct_answer']
+        })
 
+    ordered_results = [None] * len(original_data_points)
+
+    with concurrent.futures.ThreadPoolExecutor(max_workers=MAX_WORKERS) as executor:
+        future_to_index = {
+            executor.submit(evaluate_prompt_single_squad, prompt_instruction, dp['context'], dp['question'], executor_config, strategy_config): i
+            for i, dp in enumerate(original_data_points)
+        }
+
+        for future in concurrent.futures.as_completed(future_to_index):
+            index = future_to_index[future]
+            dp = original_data_points[index]
+            try:
+                predicted_answer = future.result()
+                exact_match = compute_exact(dp['correct_answer'], predicted_answer)
+                f1_score_val = compute_f1(dp['correct_answer'], predicted_answer)
+                ordered_results[index] = (predicted_answer, exact_match, f1_score_val, dp['context'], dp['question'], dp['correct_answer'])
+            except Exception as exc:
+                print(f"[utils] Erro durante a avaliação de um exemplo SQuAD (índice {index}): {exc}")
+                ordered_results[index] = ("erro_processamento_paralelo", 0, 0, dp['context'], dp['question'], dp['correct_answer'])
+
+    # Coleta as métricas e escreve os logs após todas as chamadas de API serem concluídas
     with open(log_path, "a", encoding="utf-8") as f:
-        for index, row in dataset.iterrows():
-            context = row['context']
-            question = row['question']
-            correct_answer = row['correct_answer']
-            
-            predicted_answer = evaluate_prompt_single_squad(prompt_instruction, context, question, executor_config, strategy_config)
-            
-            exact_match = compute_exact(correct_answer, predicted_answer)
-            f1_score = compute_f1(correct_answer, predicted_answer)
-            
+        for predicted_answer, exact_match, f1_score_val, context, question, correct_answer in ordered_results:
             total_em += exact_match
-            total_f1 += f1_score
-            
-            f.write(f'"{prompt_instruction}","{context.replace('"', "'''''")}","{question.replace('"', "'''''")}","{correct_answer.replace('"', "'''''")}","{predicted_answer.replace('"', "'''''")}",{exact_match},{f1_score}\n')
+            total_f1 += f1_score_val
+            f.write(f'"{prompt_instruction}","{context.replace('"', "'''''")}","{question.replace('"', "'''''")}","{correct_answer.replace('"', "'''''")}","{predicted_answer.replace('"', "'''''")}",{exact_match},{f1_score_val}\n')
 
     avg_em = total_em / len(dataset)
     avg_f1 = total_f1 / len(dataset)
@@ -396,24 +420,6 @@ def evaluate_prompt_imdb(prompt_instruction, dataset, evaluator_config, strategy
     strategy_name_sanitized = strategy_config["name"]
     os.makedirs(output_dir, exist_ok=True)
     log_path = os.path.join(output_dir, f"eval_{evaluator_name_sanitized}_{strategy_name_sanitized}.csv")
-    if not os.path.exists(log_path):
-        with open(log_path, "w", encoding="utf-8") as f: f.write("prompt_instruction,text,true_label,llm_response,predicted_label\n")
-    with open(log_path, "a", encoding="utf-8") as f:
-        for text, label in zip(texts, true_labels):
-            predicted, response_text = evaluate_prompt_single(prompt_instruction, text, label, evaluator_config, strategy_config, experiment_settings)
-            predictions.append(predicted)
-            f.write(f"\"{prompt_instruction}\",\"{text.replace('\"', '\"\"')}\",{label},\"{str(response_text).replace('\"', '\"\"')}\",{predicted}\n")
-    acc = accuracy_score(true_labels, predictions)
-    precision = precision_score(true_labels, predictions, zero_division=0)
-    recall = recall_score(true_labels, predictions, zero_division=0)
-    f1 = f1_score(true_labels, predictions, zero_division=0)
-    tokens = count_tokens(prompt_instruction)
-    alert_message = ""
-    if precision == 0 and recall == 0 and any(p == 1 for p in predictions):
-        alert_message = "Previsões positivas feitas, mas todas incorretas."
-    elif not any(p == 1 for p in predictions) and any(l == 1 for l in true_labels):
-        alert_message = "Nenhuma previsão positiva feita, mas existiam exemplos positivos."
-    return acc, f1, tokens, alert_message
 
 
 def extract_label(text: str) -> int | None:
@@ -444,8 +450,11 @@ def normalize_text(s):
 
 
 def compute_f1(a_gold, a_pred):
-    gold_toks = a_gold.split()
-    pred_toks = a_pred.split()
+    # Normaliza ambas as strings para garantir uma comparação consistente
+    normalized_gold = normalize_text(a_gold)
+    normalized_pred = normalize_text(a_pred)
+    gold_toks = normalized_gold.split()
+    pred_toks = normalized_pred.split()
     common = collections.Counter(gold_toks) & collections.Counter(pred_toks)
     num_same = sum(common.values())
     if num_same == 0:

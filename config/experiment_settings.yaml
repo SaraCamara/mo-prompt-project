@@ -2,9 +2,9 @@ dataset_path_imdb: data/imdb_pt_subset.csv
 dataset_path_squad: data/squad_fitness_set.csv
 results_log_path: logs/final_results.csv
 
-top_k: 10
-max_generations: 10
-population_size: 10
+top_k: 3
+max_generations: 3
+population_size: 3
 stagnation_limit: 3
 k_tournament_parents: 2
 
@@ -52,9 +52,6 @@ generator_imdb:
       Prompt A: "{prompt_a}"
       Prompt B: "{prompt_b}"
       Realize uma combinação dos dois prompts, como em uma operação de crossover, mantendo clareade, coerência e o propósito original.
-    user_mutation: |
-      Assim como uma mutação que introduz variedade, gere uma variação deste prompt mantendo seu objetivo de classificar sentimentos com precisão: "{prompt}"
-      A variação pode incluir reformulação, troca de termos ou reorganização sintática.
     rate_user_mutation: |
       Assim como uma mutação que introduz variedade, reescreva este prompt de forma totalmente diferente, mudando a estrutura e o tom, mas mantendo o objetivo de classificação: "{prompt}"
       A variação pode incluir reformulação, troca de termos ou reorganização sintática.
@@ -69,20 +66,21 @@ strategies_imdb:
     examples: |
       Texto: "Esta versão de Anna Christie está em alemão. Greta Garbo interpreta Anna Christie, mas todos os outros personagens têm atores diferentes da versão em inglês. Ambos foram filmados para trás porque Garbo teve um número de seguidores na Alemanha. É uma boa história e um imperdível para os fãs de Garbo."
       Classificação: positivo
+
+      ---
+
       Texto: "Além de ser chato, as cenas eram opressivas e escuras. O filme tentou retratar algum tipo de moral, mas caiu sem mensagem. Quais foram as qualidades redentoras ??Além disso, acho que não poderia fazer com que os bibliotecários pareçam mais sem glamour do que."
       Classificação: negativo
+      
+      ---
+      
+      Texto: "Um filme absolutamente maravilhoso. A história é comovente e os personagens são muito bem desenvolvidos. Recomendo a todos que apreciam um bom drama."
+      Classificação: positivo
     template: |
       {prompt_instruction}
 
       {examples}
       Texto: "{text}"
-  # - name: cot
-  #   template: |
-  #     {prompt_instruction}
-
-  #     Texto: "{text}"
-
-  #     Explicação: Analise o sentimento do seguinte texto. Primeiro explique por que é positivo ou negativo, depois informe a classificação final. Responda apenas '1' para classificações positivas ou '0' para as negativas.
 
 generator_squad:
   name: gpt-4o-mini
