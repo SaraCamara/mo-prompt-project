@@ -2,9 +2,9 @@ dataset_path_imdb: data/imdb_pt_subset.csv
 dataset_path_squad: data/squad_fitness_set.csv
 results_log_path: logs/final_results.csv
 
-top_k: 3
-max_generations: 3
-population_size: 3
+top_k: 10
+max_generations: 10
+population_size: 10
 stagnation_limit: 3
 k_tournament_parents: 2
 

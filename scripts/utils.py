@@ -9,6 +9,7 @@ import pandas as pd
 import requests
 import openai
 import concurrent.futures
+import matplotlib
 import numpy as np
 import matplotlib.pyplot as plt
 from sklearn.metrics import accuracy_score, f1_score, precision_score, recall_score
@@ -16,6 +17,7 @@ from nltk.tokenize import TreebankWordTokenizer
 
 
 tokenizer = TreebankWordTokenizer()
+matplotlib.use('Agg') # Configura o backend do Matplotlib para 'Agg' para evitar problemas de thread com GUI
 
 
 # Seção: Configuração e Carregamento de Dados
@@ -341,8 +343,8 @@ def evaluate_prompt_single_squad(prompt_instruction: str, context: str, question
     except Exception as e:
         print(f"[utils] Erro inesperado ao formatar prompt: {e}")
         return ""
-    
-    
+
+
 
 
 def evaluate_prompt(prompt_instruction, dataset, executor_config, strategy_config, experiment_settings, output_dir):
@@ -684,7 +686,7 @@ def save_generation_results(population, generation, config, output_dir):
             acc, f1, tokens, alert_message = metrics[:4]
         else:
             acc, f1, tokens, alert_message = 0.0, 0.0, 0, "metrics_missing"
-        data.append({"generation": generation, "prompt": prompt, "accuracy": acc, "f1_score": f1, "tokens": tokens, "alert": alert_message})
+        data.append({"generation": generation, "prompt": prompt, "acc": acc, "f1_score": f1, "tokens": tokens, "alert": alert_message})
     df = pd.DataFrame(data)
     df = df.sort_values(by=["f1_score", "tokens"], ascending=[False, True])
     df.to_csv(path, index=False, encoding='utf-8')
@@ -717,7 +719,7 @@ def save_sorted_population(population, generation, output_dir):
             acc, f1, tokens, alert_message = ind["metrics"][:4]
         else:
             acc, f1, tokens, alert_message = 0.0, 0.0, 0, "metrics_missing"
-        data.append({"generation": generation, "prompt": prompt, "accuracy": acc, "f1_score": f1, "tokens": tokens, "alert": alert_message})
+        data.append({"generation": generation, "prompt": prompt, "acc": acc, "f1_score": f1, "tokens": tokens, "alert": alert_message})
     df = pd.DataFrame(data)
     df = df.sort_values(by=["f1_score", "tokens"], ascending=[False, True])
     df.to_csv(sorted_log_path, index=False, encoding='utf-8')
@@ -733,40 +735,12 @@ def save_final_results(population, config, output_csv_path):
             acc, f1, tokens, alert_message = ind.get("metrics")[:4]
         else:
             acc, f1, tokens, alert_message = 0.0, 0.0, 0, "metrics_final_missing"
-        data.append({"prompt": prompt, "accuracy": acc, "f1_score": f1, "tokens": tokens, "alert": alert_message})
+        data.append({"prompt": prompt, "acc": acc, "f1_score": f1, "tokens": tokens, "alert": alert_message})
     df = pd.DataFrame(data)
     top_k = config.get("top_k", len(df))
     df_top_k = df.head(top_k)
     df_top_k.to_csv(output_csv_path, index=False, encoding='utf-8')
 
-
-# def save_pareto_front_data(front_individuals, csv_path, plot_path):
-#     if not front_individuals:
-#         df_empty = pd.DataFrame(columns=["prompt", "acc", "f1", "tokens", "rank", "crowding_distance"])
-#         df_empty.to_csv(csv_path, index=False)
-#         plt.figure()
-#         plt.text(0.5, 0.5, "Fronteira de Pareto Vazia", ha='center', va='center')
-#         plt.xlabel("Número de Tokens")
-#         plt.ylabel("Acurácia")
-#         plt.title("Fronteira de Pareto (Tokens vs Acurácia)")
-#         plt.savefig(plot_path)
-#         plt.close()
-#         return
-#     data_to_save = []
-#     for ind in front_individuals:
-#         data_to_save.append({"prompt": ind.get("prompt", "N/A"), "acc": ind.get("acc", 0.0), "f1": ind.get("f1", 0.0), "tokens": ind.get("tokens", 0), "rank": ind.get("rank", -1), "crowding_distance": ind.get("crowding_distance", 0.0)})
-#     df = pd.DataFrame(data_to_save)
-#     df_sorted = df.sort_values(by="acc", ascending=False)
-#     df_sorted.to_csv(csv_path, index=False, encoding='utf-8')
-#     plt.figure(figsize=(10, 6))
-#     plt.scatter(df["tokens"], df["acc"], c='blue', alpha=0.7, edgecolors='w', s=70)
-#     plt.xlabel("Número de Tokens (Menor é Melhor)")
-#     plt.ylabel("Acurácia (Maior é Melhor)")
-#     plt.title("Fronteira de Pareto (Tokens vs Acurácia)")
-#     plt.grid(True, linestyle='--', alpha=0.6)
-#     plt.savefig(plot_path)
-#     plt.close()
-#     print(f"[utils] Gráfico da fronteira de Pareto salvo em {plot_path}")
 
 def save_pareto_front_data(front_individuals, csv_path, plot_path):
     if not front_individuals:
@@ -795,3 +769,36 @@ def save_pareto_front_data(front_individuals, csv_path, plot_path):
     plt.savefig(plot_path)
     plt.close()
     print(f"[utils] Gráfico da fronteira de Pareto salvo em {plot_path}")
+
+# Seção: Retomada de Execução
+
+def load_population_for_resumption(generation_to_load, base_output_dir):
+    """
+    Carrega a população de uma geração específica para retomar a execução.
+
+    Args:
+        generation_to_load (int): O número da geração a ser carregada.
+        base_output_dir (str): O diretório base onde os logs das gerações são salvos.
+
+    Returns:
+        tuple: (list of dict, int) A população carregada e o número da próxima geração,
+               ou (None, None) se a população não puder ser carregada.
+    """
+    file_path = os.path.join(base_output_dir, "per_generation_pareto", f"pareto_gen_{generation_to_load}.csv")
+
+    if not os.path.exists(file_path):
+        print(f"[utils] ERRO: Arquivo de população para retomada '{file_path}' não encontrado.")
+        return None, None
+
+    try:
+        df = pd.read_csv(file_path)
+        loaded_population = []
+        for _, row in df.iterrows():
+            # Reconstruct the individual dictionary based on the format saved by save_sorted_population
+            individual = {"prompt": row["prompt"], "acc": row["acc"], "f1": row["f1"], "tokens": row["tokens"], "rank": row["rank"], "crowding_distance": row["crowding_distance"], "metrics": (row["acc"], row["f1"], row["tokens"], "")}
+            loaded_population.append(individual)
+        print(f"[utils] População da Geração {generation_to_load} carregada com sucesso de '{file_path}'.")
+        return loaded_population, generation_to_load + 1
+    except Exception as e:
+        print(f"[utils] Erro ao carregar população da Geração {generation_to_load} de '{file_path}': {e}")
+        return None, None

@@ -5,10 +5,9 @@ import os
 import re
 import yaml
 import pandas as pd
-
 from mono_evolution import run_mono_evolution
 from multi_evolution import run_multi_evolution
-from utils import load_credentials_from_yaml, load_settings, load_dataset
+from utils import load_credentials_from_yaml, load_settings, load_dataset, load_population_for_resumption
 
 # Instalação de dependências
 def install_requirements():
@@ -169,14 +168,49 @@ if __name__ == "__main__":
     if output_plot:
         print(f" - Plot: {output_plot}")
         
-        
+    # --- Lógica para iniciar ou retomar ---
+    print("\n\n[main] [>] Deseja retomar uma execução anterior?")
+    print("  0) Iniciar nova execução")
+    print("  1) Retomar de uma geração específica")
+    resume_choice = get_validated_numerical_input("Digite o número da opção desejada (0 ou 1): ", 2)
+
+    start_generation = 0
+    loaded_population = None
+
+    if resume_choice == 1:
+        while True:
+            try:
+                resume_gen_input = input("De qual geração você deseja retomar? (Ex: 5): ")
+                resume_from_generation = int(resume_gen_input)
+                if resume_from_generation > 0:
+                    loaded_population, next_gen_num = load_population_for_resumption(resume_from_generation, base_output_dir)
+                    if loaded_population is not None:
+                        start_generation = next_gen_num
+                        print(f"[main] Retomando da Geração {resume_from_generation}. Próxima geração será {start_generation}.")
+                        break
+                    else:
+                        print(f"[main] Não foi possível carregar a população da Geração {resume_from_generation}. Por favor, verifique o diretório '{base_output_dir}'.")
+                        print("Deseja tentar outra geração ou iniciar uma nova execução? (s/n para tentar outra, qualquer outra tecla para nova execução)")
+                        retry_input = input().lower()
+                        if retry_input != 's':
+                            print("[main] Iniciando nova execução.")
+                            break # Break from while loop, start new execution
+                else:
+                    print("[main] A geração para retomar deve ser um número inteiro positivo.")
+            except ValueError:
+                print("[main] Entrada inválida. Por favor, insira um número inteiro.")
+    else:
+        print("[main] Iniciando nova execução.")
+
     # Execução do Algoritmo
     print("\n\n[main] [>] Iniciando execução do algoritmo evolutivo...\n")
 
     if is_multiobjective:
-        run_multi_evolution(config, df_sample, initial_prompts, output_csv, output_plot)
+        run_multi_evolution(config, df_sample, initial_prompts, output_csv, output_plot,
+                            start_generation=start_generation, initial_population=loaded_population)
     else:
-        run_mono_evolution(config, df_sample, initial_prompts, output_csv)
+        run_mono_evolution(config, df_sample, initial_prompts, output_csv,
+                           start_generation=start_generation, initial_population=loaded_population)
 
     print(f"\n[main] Execução finalizada. Resultados disponíveis em:\n - {output_csv}\n")
     

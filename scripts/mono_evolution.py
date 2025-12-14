@@ -8,7 +8,7 @@ from utils import (
     crossover_and_mutation_ga, roulette_wheel_selection
 )
 
-def run_mono_evolution(config, dataset, initial_prompts, output_csv_path):
+def run_mono_evolution(config, dataset, initial_prompts, output_csv_path, start_generation=0, initial_population=None):
     print("[mono_evolution] Iniciando execução da evolução mono-objetivo")
 
     evaluator_config = config["evaluators"][0]
@@ -25,19 +25,24 @@ def run_mono_evolution(config, dataset, initial_prompts, output_csv_path):
     print(f"[mono_evolution] Avaliador: {evaluator_config['name']}")
     print(f"[mono_evolution] Estratégia: {strategy_config['name']}")
 
-    # Passo 1: Avaliação da População Inicial
-    print("\n[mono_evolution] Avaliando população inicial...")
     population = []
-    for i, p_text in enumerate(initial_prompts):
-        print(f"[mono_evolution] Avaliando prompt inicial {i + 1}/{len(initial_prompts)}: \"{p_text[:100]}...\"")
-        metrics = evaluate_prompt(p_text, dataset, evaluator_config, strategy_config, config, eval_log_dir)
-        population.append({"prompt": p_text, "metrics": metrics})
+    current_generation = start_generation
 
-    save_sorted_population(population, 0, generation_log_dir)  # Geração 0
+    if initial_population:
+        print(f"\n[mono_evolution] Retomando execução da Geração {start_generation - 1} com população carregada.")
+        population = initial_population
+    else:
+        # Passo 1: Avaliação da População Inicial
+        print("\n[mono_evolution] Avaliando população inicial...")
+        for i, p_text in enumerate(initial_prompts):
+            print(f"[mono_evolution] Avaliando prompt inicial {i + 1}/{len(initial_prompts)}: \"{p_text[:100]}...\"")
+            metrics = evaluate_prompt(p_text, dataset, evaluator_config, strategy_config, config, eval_log_dir)
+            population.append({"prompt": p_text, "metrics": metrics})
+        save_sorted_population(population, 0, generation_log_dir)  # Geração 0
 
-    # Ciclo de Gerações
-    for generation in range(config["max_generations"]):
-        current_generation_number = generation + 1
+    # Ciclo de Gerações (ajustado para retomar)
+    for generation in range(current_generation, config["max_generations"]):
+        current_generation_number = generation
         print(f"\n[mono_evolution]--- Geração {current_generation_number}---")
 
         try:

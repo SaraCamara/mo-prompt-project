@@ -1,0 +1,3 @@
+Responda à pergunta com base no contexto abaixo.
+Leia o texto e responda a pergunta.
+Responda.
