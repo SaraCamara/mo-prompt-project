@@ -49,7 +49,7 @@ def generate_unique_offspring(current_population, config, evolution_type="mono")
     """
     offspring_prompts_dicts = []
     existing_prompts = {ind['prompt'] for ind in current_population}
-    population_size = config.get("population_size", 10)
+    population_size = config.get("evolution_params", {}).get("population_size", 10)
     num_parents_for_crossover = 2 # Geralmente 2 pais para crossover
     max_attempts = population_size * 3
     attempts = 0
@@ -69,7 +69,7 @@ def generate_unique_offspring(current_population, config, evolution_type="mono")
             parent_pair = roulette_wheel_selection(current_population, num_parents_for_crossover)
             crossover_mutation_func = crossover_and_mutation_ga
         elif evolution_type == "multi":
-            k_tournament_parents = config.get("k_tournament_parents", 2)
+            k_tournament_parents = config.get("evolution_params", {}).get("k_tournament_parents", 2)
             parent_pair = tournament_selection_multiobjective(current_population, k_tournament_parents, num_parents_for_crossover)
             crossover_mutation_func = mop_crossover_and_mutation_ga
         else: # type: ignore

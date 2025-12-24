@@ -14,7 +14,7 @@ def run_multi_evolution(config, dataset, initial_prompts_text, output_csv_path, 
     # Configuração Inicial
     evaluator_config = config["evaluators"][0]
     strategy_config = config["strategies"][0]
-    population_size = config.get("population_size", 10)
+    population_size = config.get("evolution_params", {}).get("population_size", 10)
     base_output_dir = config["base_output_dir"]
     per_generation_pareto_log_dir = os.path.join(base_output_dir, "per_generation_pareto")
     os.makedirs(per_generation_pareto_log_dir, exist_ok=True)
@@ -56,9 +56,9 @@ def run_multi_evolution(config, dataset, initial_prompts_text, output_csv_path, 
     # Passo 2: Ciclo de Gerações
     stagnation_counter = 0
     last_front_hash = None
-    stagnation_limit = config.get("stagnation_limit", 3)
+    stagnation_limit = config.get("evolution_params", {}).get("stagnation_limit", 3)
 
-    for generation_num in range(current_generation, config["max_generations"]):
+    for generation_num in range(current_generation, config["evolution_params"]["max_generations"]):
         current_gen_display = generation_num # Ajustado para corresponder ao número da geração
         logger.info(f"--- Geração {current_gen_display}---")
 

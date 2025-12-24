@@ -55,7 +55,7 @@ def save_final_results(population, config, output_csv_path):
             acc, f1, tokens, alert_message = 0.0, 0.0, 0, "metrics_final_missing"
         data.append({"prompt": prompt, "acc": acc, "f1_score": f1, "tokens": tokens, "alert": alert_message})
     df = pd.DataFrame(data)
-    top_k = config.get("top_k", len(df))
+    top_k = config.get("evolution_params", {}).get("top_k", len(df))
     df_top_k = df.head(top_k)
     df_top_k.to_csv(output_csv_path, index=False, encoding='utf-8')
 

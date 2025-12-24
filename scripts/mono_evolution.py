@@ -15,7 +15,7 @@ def run_mono_evolution(config, dataset, initial_prompts, output_csv_path, start_
 
     evaluator_config = config["evaluators"][0]
     strategy_config = config["strategies"][0]
-    population_size = config.get("population_size", 10)
+    population_size = config.get("evolution_params", {}).get("population_size", 10)
 
     # Configuração de Caminhos
     base_output_dir = config["base_output_dir"]
