@@ -65,10 +65,16 @@ def run_multi_evolution(config, dataset, initial_prompts_text, output_csv_path, 
         print(f"\n[multi_evolution]--- Geração {current_gen_display}---")
 
         offspring_prompts = generate_unique_offspring(current_population, config)
+        print(f"[multi_evolution] Offspring gerados ({len(offspring_prompts)}):")
+        for i, p in enumerate(offspring_prompts[:5]): # Loga os primeiros 5 offsprings
+            print(f"  {i+1}) '{p}'")
         if not offspring_prompts:
             print("[multi_evolution] [!] Nenhum filho único foi gerado nesta geração.")
         
         evaluated_offspring = evaluate_population(offspring_prompts, dataset, config, executor_config)
+        print("[multi_evolution] Scores dos offspring avaliados:")
+        for i, ind in enumerate(evaluated_offspring[:5]): # Loga os scores dos primeiros 5 offsprings avaliados
+            print(f"  - Prompt: \"{ind.get('prompt', 'N/A')[:50]}...\" | F1: {ind.get('f1', 0.0):.4f} | Acc: {ind.get('acc', 0.0):.4f} | Tokens: {ind.get('tokens', 0)}")
         
         current_population = select_survivors_nsgaii(current_population, evaluated_offspring, population_size)
         print(f"[multi_evolution] Nova população selecionada. Tamanho: {len(current_population)}")

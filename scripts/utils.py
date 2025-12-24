@@ -1,6 +1,7 @@
 # utils.py
 import collections
 import json
+import subprocess
 import os
 import re
 import yaml
@@ -10,6 +11,7 @@ import requests
 import openai
 import concurrent.futures
 import matplotlib
+import sys
 import numpy as np
 import matplotlib.pyplot as plt
 from sklearn.metrics import accuracy_score, f1_score, precision_score, recall_score
@@ -19,6 +21,33 @@ from nltk.tokenize import TreebankWordTokenizer
 tokenizer = TreebankWordTokenizer()
 matplotlib.use('Agg') # Configura o backend do Matplotlib para 'Agg' para evitar problemas de thread com GUI
 
+
+# Instalação de dependências
+def install_requirements():
+    requirements_file = "requirements.txt"
+    if os.path.exists(requirements_file):
+        try:
+            subprocess.check_call([sys.executable, "-m", "pip", "install", "-r", requirements_file])
+            print("[utils] Dependências instaladas com sucesso.")
+        except subprocess.CalledProcessError as e:
+            print(f"[utils] Erro ao instalar dependências: {e}")
+            sys.exit(1)
+    else:
+        print(f"[utils] Arquivo {requirements_file} não encontrado.")
+        sys.exit(1)
+
+# Função auxiliar para obter input numérico validado
+def get_validated_numerical_input(prompt_message, num_options):
+    while True:
+        try:
+            user_input = input(prompt_message)
+            choice = int(user_input)
+            if 0 <= choice < num_options:
+                return choice
+            else:
+                print(f"[utils] Opção inválida. Por favor, insira um número entre 0 e {num_options - 1}.")
+        except ValueError:
+            print("[utils] Entrada inválida. Por favor, insira um número.")
 
 # Seção: Configuração e Carregamento de Dados
 
@@ -177,7 +206,9 @@ def _call_openai_api(messages, generator_config, temperature=0.8):
     try:
         openai.api_key = local_api_key
         openai.api_base = local_api_base if local_api_base else "https://api.openai.com/v1"
+        # print(f"[utils] [OpenAI] Requisição para '{model_name}': {messages}")
         response = openai.ChatCompletion.create(model=model_name, messages=messages, temperature=temperature)
+        # print(f"[utils] [OpenAI] Resposta de '{model_name}': {response.choices[0].message['content'].strip()}")
         return response.choices[0].message["content"].strip()
     except openai.error.AuthenticationError as e:
         print(f"[utils] ERRO DE AUTENTICAÇÃO com a API OpenAI: {e}.")
@@ -201,7 +232,7 @@ def crossover_and_mutation_ga(pair_of_parent_prompts, config):
     template_generator = generator_config.get("template_generator", {})
     system_instruction = template_generator.get("system")
     user_instruction_crossover = template_generator.get("user_crossover")
-    user_instruction_mutation = template_generator.get("user_mutation")
+    user_instruction_mutation = template_generator.get("user_mutation", "Mute: {prompt}") # Adicionado valor padrão
     prompt_a = pair_of_parent_prompts[0]["prompt"]
     prompt_b = pair_of_parent_prompts[1]["prompt"]
     crossover_messages = [{"role": "system", "content": system_instruction}, {"role": "user", "content": user_instruction_crossover.format(prompt_a=prompt_a, prompt_b=prompt_b)}]
@@ -237,6 +268,7 @@ def mop_crossover_and_mutation_ga(pair_of_parent_prompts, config):
     prompt_a = pair_of_parent_prompts[0]["prompt"] if isinstance(pair_of_parent_prompts[0], dict) else pair_of_parent_prompts[0]
     prompt_b = pair_of_parent_prompts[1]["prompt"] if isinstance(pair_of_parent_prompts[1], dict) else pair_of_parent_prompts[1]
 
+    print(f"[utils] [Crossover/Mutação] Pais: '{prompt_a[:100]}...' e '{prompt_b[:100]}...'")
     # CROSSOVER
     crossover_messages = [
         {"role": "system", "content": system_instruction},
@@ -245,6 +277,7 @@ def mop_crossover_and_mutation_ga(pair_of_parent_prompts, config):
     
     # Temperatura média para o crossover (ex: 0.5 - 0.7)
     current_prompt = _call_openai_api(crossover_messages, generator_config, temperature=0.6)
+    print(f"[utils] [Crossover/Mutação] Crossover gerado: '{current_prompt[:100]}...'")
     
     if "erro_" in current_prompt:
         return [{"prompt": f"erro_crossover ({current_prompt})"}]
@@ -261,6 +294,7 @@ def mop_crossover_and_mutation_ga(pair_of_parent_prompts, config):
             {"role": "user", "content": user_instruction_mutation.format(prompt=current_prompt)}
         ]
         # Aumento de temperatura para forçar diversidade se ocorrer a mutação
+        print(f"[utils] [Crossover/Mutação] Aplicando mutação (Taxa: {mutation_rate})...")
         mutated_prompt = _call_openai_api(mutation_messages, generator_config, temperature=0.9)
         
         if "erro_" not in mutated_prompt:
@@ -311,18 +345,20 @@ def evaluate_prompt_single(prompt_instruction: str, text: str, label: int,
     return prediction, response_text
 
 def evaluate_prompt_single_squad(prompt_instruction: str, context: str, question: str, executor_config: dict, strategy_config: dict) -> str:
+    strategy_name = strategy_config.get("name", "desconhecida").lower()
     template_str = strategy_config.get("template")
     
     if not template_str:
         print(f"[utils] Template não encontrado para a estratégia SQuAD.")
         return ""
 
-    format_args = {
-        "prompt_instruction": prompt_instruction, # Era "INSTRUÇÃO_VARIAVEL"
-        "context": context,                       # Era "Contexto"
-        "question": question                      # Era "Pergunta"
-    }
+    format_args = {"prompt_instruction": prompt_instruction, "context": context, "question": question}
 
+    # Adiciona exemplos se a estratégia for few-shot
+    if strategy_name == "few-shot":
+        format_args["examples"] = strategy_config.get("examples", "")
+
+    
     try:
         # Tenta formatar. Se o template tiver chaves extras ou faltantes, vai dar erro.
         full_prompt = template_str.format(**format_args)
@@ -362,6 +398,7 @@ def evaluate_prompt_squad(prompt_instruction, dataset, executor_config, strategy
     total_f1 = 0
     total_tokens = count_tokens(prompt_instruction)
 
+    print(f"[utils] [SQuAD] Avaliando prompt_instruction: '{prompt_instruction}'")
     # Configure o número máximo de workers. Ajuste este valor com base nos limites de taxa da API
     MAX_WORKERS = 10
     
@@ -398,6 +435,10 @@ def evaluate_prompt_squad(prompt_instruction, dataset, executor_config, strategy
                 predicted_answer = future.result()
                 exact_match = compute_exact(dp['correct_answer'], predicted_answer)
                 f1_score_val = compute_f1(dp['correct_answer'], predicted_answer)
+                # Log detalhado para os primeiros exemplos
+                if index < 3:
+                    print(f"[utils] [SQuAD] Exemplo {index}: Q='{dp['question'][:100]}', GT='{dp['correct_answer'][:100]}', Pred='{predicted_answer[:100]}', EM={exact_match}, F1={f1_score_val}")
+
                 ordered_results[index] = (predicted_answer, exact_match, f1_score_val, dp['context'], dp['question'], dp['correct_answer'])
             except Exception as exc:
                 print(f"[utils] Erro durante a avaliação de um exemplo SQuAD (índice {index}): {exc}")
@@ -426,6 +467,10 @@ def evaluate_prompt_imdb(prompt_instruction, dataset, evaluator_config, strategy
 
 def extract_label(text: str) -> int | None:
     if not isinstance(text, str): return None
+    # Adiciona log para a resposta bruta do LLM antes da extração
+    if text and len(text) > 0:
+        print(f"[utils] [Extract Label] Resposta bruta do LLM: '{text[:100]}...'")
+
     match = re.search(r'\b(0|1)\b', text)
     if match: return int(match.group(1))
     return None
@@ -608,6 +653,7 @@ def evaluate_population(prompts_to_evaluate, dataset, config, executor_config):
     eval_log_dir = os.path.join(base_output_dir, "prompt_eval_logs")
     os.makedirs(eval_log_dir, exist_ok=True)
     prompt_list = [p["prompt"] if isinstance(p, dict) else p for p in prompts_to_evaluate]
+    print(f"[utils] Iniciando avaliação de {len(prompt_list)} prompts.")
     for p_text in prompt_list:
         metrics = evaluate_prompt(p_text, dataset, executor_config, strategy_config, config, eval_log_dir)
         acc, f1, tokens, _ = metrics
@@ -624,8 +670,11 @@ def generate_unique_offspring(current_population, config):
     attempts = 0
     while len(offspring_prompts) < population_size and attempts < max_attempts:
         attempts += 1
-        if len(current_population) < 2: break
+        if len(current_population) < 2:
+            print("[utils] [Offspring] População atual menor que 2, não é possível gerar offspring.")
+            break
         parent_pair = tournament_selection_multiobjective(current_population, k_tournament_parents, 2)
+        print(f"[utils] [Offspring] Pais selecionados: '{parent_pair[0]['prompt'][:50]}...' e '{parent_pair[1]['prompt'][:50]}...'")
         child_dict_list = mop_crossover_and_mutation_ga(parent_pair, config)
         if child_dict_list and "prompt" in child_dict_list[0] and "erro_" not in child_dict_list[0]["prompt"]:
             new_prompt = child_dict_list[0]["prompt"]
@@ -772,7 +821,7 @@ def save_pareto_front_data(front_individuals, csv_path, plot_path):
 
 # Seção: Retomada de Execução
 
-def load_population_for_resumption(generation_to_load, base_output_dir):
+def load_population_for_resumption(generation_to_load, base_output_dir, is_multiobjective):
     """
     Carrega a população de uma geração específica para retomar a execução.
 
@@ -780,11 +829,18 @@ def load_population_for_resumption(generation_to_load, base_output_dir):
         generation_to_load (int): O número da geração a ser carregada.
         base_output_dir (str): O diretório base onde os logs das gerações são salvos.
 
+        is_multiobjective (bool): True se for uma execução multi-objetivo, False para mono-objetivo.
+
     Returns:
         tuple: (list of dict, int) A população carregada e o número da próxima geração,
                ou (None, None) se a população não puder ser carregada.
     """
-    file_path = os.path.join(base_output_dir, "per_generation_pareto", f"pareto_gen_{generation_to_load}.csv")
+    if is_multiobjective:
+        # Multi-objective saves Pareto fronts in 'per_generation_pareto'
+        file_path = os.path.join(base_output_dir, "per_generation_pareto", f"pareto_gen_{generation_to_load}.csv")
+    else:
+        # Mono-objective saves sorted population in 'generations_detail'
+        file_path = os.path.join(base_output_dir, "generations_detail", f"population_sorted_gen_{generation_to_load}.csv")
 
     if not os.path.exists(file_path):
         print(f"[utils] ERRO: Arquivo de população para retomada '{file_path}' não encontrado.")
@@ -794,8 +850,19 @@ def load_population_for_resumption(generation_to_load, base_output_dir):
         df = pd.read_csv(file_path)
         loaded_population = []
         for _, row in df.iterrows():
-            # Reconstruct the individual dictionary based on the format saved by save_sorted_population
-            individual = {"prompt": row["prompt"], "acc": row["acc"], "f1": row["f1"], "tokens": row["tokens"], "rank": row["rank"], "crowding_distance": row["crowding_distance"], "metrics": (row["acc"], row["f1"], row["tokens"], "")}
+            individual = {"prompt": row["prompt"]}
+            
+            individual["acc"] = row.get("acc", 0.0)
+            individual["tokens"] = row.get("tokens", 0)
+
+            if is_multiobjective:
+                individual["f1"] = row.get("f1", 0.0) # Multi-objective uses 'f1'
+                individual["rank"] = row.get("rank", -1)
+                individual["crowding_distance"] = row.get("crowding_distance", 0.0)
+            else:
+                individual["f1"] = row.get("f1_score", 0.0) # Mono-objective uses 'f1_score'
+            
+            individual["metrics"] = (individual["acc"], individual["f1"], individual["tokens"], "")
             loaded_population.append(individual)
         print(f"[utils] População da Geração {generation_to_load} carregada com sucesso de '{file_path}'.")
         return loaded_population, generation_to_load + 1

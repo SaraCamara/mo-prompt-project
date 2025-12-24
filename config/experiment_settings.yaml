@@ -126,13 +126,14 @@ strategies_squad:
       Contexto: "O futebol é o esporte mais popular do Brasil. A seleção brasileira ganhou a Copa do Mundo da FIFA cinco vezes, mais do que qualquer outra nação."
       Pergunta: "Quantas vezes o Brasil ganhou a Copa do Mundo?"
       Resposta: "cinco vezes"
+      
     template: |
       {prompt_instruction}
-
+      Sua tarefa é extrair a resposta exata do texto abaixo. A resposta deve ser um trecho copiado diretamente do contexto, sem nenhuma palavra ou explicação adicional.
+      Por exemplo:
       {examples}
-      
-      ---
 
-      Context: "{context}"
+      ---
+      Contexto: "{context}"
       Pergunta: "{question}"
       Resposta:

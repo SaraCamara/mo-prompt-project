@@ -4,38 +4,11 @@ import sys
 import os
 import re
 import yaml
+import json
 import pandas as pd
-from mono_evolution import run_mono_evolution
-from multi_evolution import run_multi_evolution
-from utils import load_credentials_from_yaml, load_settings, load_dataset, load_population_for_resumption
-
-# Instalação de dependências
-def install_requirements():
-    requirements_file = "requirements.txt"
-    if os.path.exists(requirements_file):
-        try:
-            subprocess.check_call([sys.executable, "-m", "pip", "install", "-r", requirements_file])
-            print("[main] Dependências instaladas com sucesso.")
-        except subprocess.CalledProcessError as e:
-            print(f"[main] Erro ao instalar dependências: {e}")
-            sys.exit(1)
-    else:
-        print(f"[main] Arquivo {requirements_file} não encontrado.")
-        sys.exit(1)
-
-
-# Função auxiliar para obter input numérico validado
-def get_validated_numerical_input(prompt_message, num_options):
-    while True:
-        try:
-            user_input = input(prompt_message)
-            choice = int(user_input)
-            if 0 <= choice < num_options:
-                return choice
-            else:
-                print(f"[main] Opção inválida. Por favor, insira um número entre 0 e {num_options - 1}.")
-        except ValueError:
-            print("[main] Entrada inválida. Por favor, insira um número.")
+from mono_evolution import run_mono_evolution # Estes são módulos locais, não do utils
+from multi_evolution import run_multi_evolution # Estes são módulos locais, não do utils
+from utils import load_credentials_from_yaml, load_settings, load_dataset, load_initial_prompts, load_population_for_resumption, install_requirements, get_validated_numerical_input
 
 if __name__ == "__main__":
     install_requirements()
@@ -43,24 +16,19 @@ if __name__ == "__main__":
     if not credentials:
         print("[main] ERRO FATAL: Falha ao carregar 'credentials.yaml'. Encerrando.")
         sys.exit(1)
-    print("[main] Credenciais carregadas.")
+    #print("[main] Credenciais carregadas.")
 
     config = load_settings("config/experiment_settings.yaml", credentials)
     if not config:
         print("[main] ERRO FATAL: Falha ao carregar 'experiment_settings.yaml'. Encerrando.")
         sys.exit(1)
-    print("[main] Configurações principais carregadas e processadas.")
+    #print(f"[main] Configurações principais carregadas e processadas: {json.dumps(config, indent=2)}")
+
 
     # Seleção de dados para tarefa (IMDB/SQuAD)
-    print("\n\n[main] [>] Selecione a tarefa a ser executada:\n  0) Análise de Sentimentos - IMDB-PT \n  1) Perguntas e Respostas - SQuAD-PT")
-    while True:
-        task_input = input("Digite o número da opção desejada (0 ou 1): ")
-        if task_input in ["0", "1"]:
-            is_squad = (task_input == "1")
-            break
-        else:
-            print("[main] Opção inválida. Digite 0 ou 1.")
-    
+    print("\n\n[main] [>] Selecione a tarefa a ser executada:\n  0) Análise de Sentimentos - IMDB-PT \n  1) Perguntas e Respostas - SQuAD-PT")    
+    task_choice = get_validated_numerical_input("Digite o número da opção desejada (0 ou 1): ", 2)
+    is_squad = (task_choice == 1)
     task_name = "squad" if is_squad else "imdb"
     config["task"] = task_name
     print(f"[main] Tarefa selecionada: {task_name.upper()}")
@@ -71,44 +39,25 @@ if __name__ == "__main__":
     config["strategies"] = config[f"strategies_{task_name}"]
     
     
-    # Carregamento de Dados
-    dataset_path = config.get("dataset_path", [])
-    if not os.path.exists(dataset_path):
-        print(f"[main] Arquivo de dataset '{dataset_path}' não encontrado. Verifique 'experiment_settings.yaml'. Encerrando.")
-        sys.exit(1)
-    try:
-        df_sample = pd.read_csv(dataset_path)
-        print(f"[main] Dataset carregado: {dataset_path} ({len(df_sample)} registros)")
-    except Exception as e:
-        print(f"[main] Erro ao carregar o dataset '{dataset_path}': {e}. Encerrando.")
+    # Carregamento do Dataset
+    df_sample = load_dataset(config)
+    if df_sample is None:
+        print("[main] ERRO FATAL: Falha ao carregar o dataset. Encerrando.")
         sys.exit(1)
 
     # Carregamento da População Inicial
-    print("\n\n[main] [>] Carregamento da população inicial")
+    print("\n\n[main] Carregamento da população inicial")
     prompts_path = f"data/initial_prompts_{task_name}.txt"
-    if os.path.exists(prompts_path):
-        with open(prompts_path, "r", encoding="utf-8") as f:
-            initial_prompts = [line.strip() for line in f if line.strip()]
-        
-        if not initial_prompts:
-            print(f"[main] Arquivo de prompts '{prompts_path}' está vazio. Encerrando.")
-            sys.exit(1)
-        
-        print(f"[main] {len(initial_prompts)} prompts carregados do arquivo: {prompts_path}")
-    else:
-        print(f"[main] Arquivo de prompts '{prompts_path}' não encontrado. Encerrando.")
+    initial_prompts = load_initial_prompts(prompts_path)
+    if not initial_prompts:
+        print(f"[main] ERRO FATAL: Falha ao carregar prompts iniciais de '{prompts_path}'. Encerrando.")
         sys.exit(1)
 
 
     # Seleção de Modo (Mono/Multi)
     print("\n\n[main] [>] Selecione estratégia de otimização:\n  0) Mono-objetivo\n  1) Multiobjetivo")
-    while True:
-        optimization_type_input = input("Digite o número da opção desejada (0 ou 1): ")
-        if optimization_type_input in ["0", "1"]:
-            is_multiobjective = (optimization_type_input == "1")
-            break
-        else:
-            print("[main] Opção inválida. Digite 0 ou 1.")
+    optimization_type_choice = get_validated_numerical_input("Digite o número da opção desejada (0 ou 1): ", 2)
+    is_multiobjective = (optimization_type_choice == 1)
     config["objective"] = "multiobjetivo" if is_multiobjective else "mono-objetivo"
     print(f"[main] Tipo de otimização selecionado: [{config['objective'].capitalize()}]")
 
@@ -152,10 +101,10 @@ if __name__ == "__main__":
 
 
     # Configuração de Caminhos de Saída 
-    print("\n\n[main] [>] Configurando diretório de saída para o experimento...")
+    print("\n\n[main] Configurando diretório de saída para o experimento...")
     objective_path_name = "mop" if is_multiobjective else "evo"
 
-    base_output_dir = os.path.join("logs", objective_path_name, output_model_name, strategy_name)
+    base_output_dir = os.path.join("logs", task_name, objective_path_name, output_model_name, strategy_name)
     print(f"[main] Todos os resultados e logs para esta execução serão salvos em: '{base_output_dir}'")
     os.makedirs(base_output_dir, exist_ok=True)
 
@@ -168,7 +117,7 @@ if __name__ == "__main__":
     if output_plot:
         print(f" - Plot: {output_plot}")
         
-    # --- Lógica para iniciar ou retomar ---
+    # Lógica para iniciar ou retomar
     print("\n\n[main] [>] Deseja retomar uma execução anterior?")
     print("  0) Iniciar nova execução")
     print("  1) Retomar de uma geração específica")
@@ -182,8 +131,8 @@ if __name__ == "__main__":
             try:
                 resume_gen_input = input("De qual geração você deseja retomar? (Ex: 5): ")
                 resume_from_generation = int(resume_gen_input)
-                if resume_from_generation > 0:
-                    loaded_population, next_gen_num = load_population_for_resumption(resume_from_generation, base_output_dir)
+                if resume_from_generation >= 0:
+                    loaded_population, next_gen_num = load_population_for_resumption(resume_from_generation, base_output_dir, is_multiobjective)
                     if loaded_population is not None:
                         start_generation = next_gen_num
                         print(f"[main] Retomando da Geração {resume_from_generation}. Próxima geração será {start_generation}.")
@@ -194,24 +143,21 @@ if __name__ == "__main__":
                         retry_input = input().lower()
                         if retry_input != 's':
                             print("[main] Iniciando nova execução.")
-                            break # Break from while loop, start new execution
-                else:
-                    print("[main] A geração para retomar deve ser um número inteiro positivo.")
+                            break 
             except ValueError:
                 print("[main] Entrada inválida. Por favor, insira um número inteiro.")
     else:
         print("[main] Iniciando nova execução.")
 
     # Execução do Algoritmo
-    print("\n\n[main] [>] Iniciando execução do algoritmo evolutivo...\n")
+    print("\n\n[main] [>] Iniciando execução do algoritmo evolutivo.\n")
 
     if is_multiobjective:
         run_multi_evolution(config, df_sample, initial_prompts, output_csv, output_plot,
                             start_generation=start_generation, initial_population=loaded_population)
     else:
         run_mono_evolution(config, df_sample, initial_prompts, output_csv,
-                           start_generation=start_generation, initial_population=loaded_population)
+                            start_generation=start_generation, initial_population=loaded_population)
 
     print(f"\n[main] Execução finalizada. Resultados disponíveis em:\n - {output_csv}\n")
-    
-    
+
