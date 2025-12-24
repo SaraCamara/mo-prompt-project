@@ -6,8 +6,8 @@ import re
 import yaml
 import json
 import pandas as pd
-from mono_evolution import run_mono_evolution # Estes são módulos locais, não do utils
-from multi_evolution import run_multi_evolution # Estes são módulos locais, não do utils
+from mono_evolution import run_mono_evolution
+from multi_evolution import run_multi_evolution
 from utils import load_credentials_from_yaml, load_settings, load_dataset, load_initial_prompts, load_population_for_resumption, install_requirements, get_validated_numerical_input
 
 if __name__ == "__main__":

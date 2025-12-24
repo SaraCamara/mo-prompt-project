@@ -403,6 +403,7 @@ def evaluate_prompt_squad(prompt_instruction, dataset, executor_config, strategy
     MAX_WORKERS = 10
     
     executor_name_sanitized = executor_config["name"].replace(":", "_").replace("/", "_")
+    # strategy_name_sanitized = strategy_config["name"] # Já definido acima
     strategy_name_sanitized = strategy_config["name"]
     os.makedirs(output_dir, exist_ok=True)
     log_path = os.path.join(output_dir, f"eval_{executor_name_sanitized}_{strategy_name_sanitized}.csv")
@@ -457,12 +458,67 @@ def evaluate_prompt_squad(prompt_instruction, dataset, executor_config, strategy
     return avg_em, avg_f1, total_tokens, ""
 
 def evaluate_prompt_imdb(prompt_instruction, dataset, evaluator_config, strategy_config, experiment_settings, output_dir):
-    predictions, true_labels = [], dataset["label"].tolist()
-    texts = dataset["text"].tolist()
+    predictions = []
+    true_labels = dataset["label"].tolist()
+    # texts = dataset["text"].tolist() # 'texts' não é usado diretamente após a refatoração
+    
     evaluator_name_sanitized = evaluator_config["name"].replace(":", "_").replace("/", "_")
     strategy_name_sanitized = strategy_config["name"]
     os.makedirs(output_dir, exist_ok=True)
     log_path = os.path.join(output_dir, f"eval_{evaluator_name_sanitized}_{strategy_name_sanitized}.csv")
+
+    total_tokens = count_tokens(prompt_instruction) # Conta tokens para a instrução do prompt uma vez
+
+    if not os.path.exists(log_path):
+        with open(log_path, "w", encoding="utf-8") as f:
+            f.write("prompt_instruction,text,true_label,llm_prediction,llm_response\n")
+
+    print(f"[utils] [IMDB] Avaliando prompt_instruction: '{prompt_instruction}'")
+
+    # Use ThreadPoolExecutor para chamadas de API paralelas
+    MAX_WORKERS = 10 # Ajuste com base nos limites de taxa da API
+    
+    # Prepara tarefas para execução paralela, mantendo a ordem original
+    original_data_points = []
+    for index, row in dataset.iterrows():
+        original_data_points.append({
+            'text': row['text'],
+            'label': row['label']
+        })
+
+    ordered_results = [None] * len(original_data_points)
+
+    with concurrent.futures.ThreadPoolExecutor(max_workers=MAX_WORKERS) as executor:
+        future_to_index = {
+            executor.submit(evaluate_prompt_single, prompt_instruction, dp['text'], dp['label'], evaluator_config, strategy_config, experiment_settings): i
+            for i, dp in enumerate(original_data_points)
+        }
+
+        for future in concurrent.futures.as_completed(future_to_index):
+            index = future_to_index[future]
+            dp = original_data_points[index]
+            try:
+                prediction, response_text = future.result()
+                # Log detalhado para os primeiros exemplos
+                if index < 3:
+                    print(f"[utils] [IMDB] Exemplo {index}: Text='{dp['text'][:100]}', GT={dp['label']}, Pred={prediction}, LLM_Resp='{response_text[:100]}'")
+                ordered_results[index] = (prediction, response_text, dp['text'], dp['label'])
+            except Exception as exc:
+                print(f"[utils] Erro durante a avaliação de um exemplo IMDB (índice {index}): {exc}")
+                # Em caso de erro, assume previsão incorreta e registra resposta de erro
+                ordered_results[index] = (1 - dp['label'], "erro_processamento_paralelo", dp['text'], dp['label'])
+
+    # Coleta previsões e escreve logs após todas as chamadas de API serem concluídas
+    with open(log_path, "a", encoding="utf-8") as f:
+        for prediction, response_text, text, label in ordered_results:
+            predictions.append(prediction)
+            f.write(f'"{prompt_instruction}","{text.replace('"', "'''''")}","{label}","{prediction}","{response_text.replace('"', "'''''")}"\n')
+
+    # Calcula métricas gerais
+    acc = accuracy_score(true_labels, predictions)
+    f1 = f1_score(true_labels, predictions, average='binary') # Assumindo classificação binária (0 ou 1)
+
+    return acc, f1, total_tokens, ""
 
 
 def extract_label(text: str) -> int | None:
@@ -563,11 +619,6 @@ def tournament_selection_multiobjective(population_with_rank_and_crowding, k_tou
 
 # Seção: Lógica NSGA-II
 
-# def dominates(ind_a_objectives, ind_b_objectives):
-#     a_is_better_or_equal = (ind_a_objectives["acc"] >= ind_b_objectives["acc"] and ind_a_objectives["tokens"] <= ind_b_objectives["tokens"])
-#     a_is_strictly_better = (ind_a_objectives["acc"] > ind_b_objectives["acc"] or ind_a_objectives["tokens"] < ind_b_objectives["tokens"])
-#     return a_is_better_or_equal and a_is_strictly_better
-
 def dominates(ind_a_objectives, ind_b_objectives):
     a_is_better_or_equal = (ind_a_objectives["f1"] >= ind_b_objectives["f1"] and ind_a_objectives["tokens"] <= ind_b_objectives["tokens"])
     a_is_strictly_better = (ind_a_objectives["f1"] > ind_b_objectives["f1"] or ind_a_objectives["tokens"] < ind_b_objectives["tokens"])
@@ -606,24 +657,6 @@ def fast_non_dominated_sort(population_with_objectives):
     return fronts
 
 
-# def compute_crowding_distance(front_individuals):
-#     if not front_individuals: return []
-#     num_individuals = len(front_individuals)
-#     for ind in front_individuals: ind['crowding_distance'] = 0.0
-#     objectives = {'acc': True, 'tokens': False}
-#     for obj_key, maximize in objectives.items():
-#         sorted_front = sorted(front_individuals, key=lambda x: x[obj_key])
-#         sorted_front[0]['crowding_distance'] = float('inf')
-#         if num_individuals > 1: sorted_front[num_individuals - 1]['crowding_distance'] = float('inf')
-#         min_obj_val = sorted_front[0][obj_key]
-#         max_obj_val = sorted_front[num_individuals - 1][obj_key]
-#         range_obj = max_obj_val - min_obj_val
-#         if range_obj == 0: continue
-#         for i in range(1, num_individuals - 1):
-#             if sorted_front[i]['crowding_distance'] != float('inf'):
-#                 sorted_front[i]['crowding_distance'] += (sorted_front[i+1][obj_key] - sorted_front[i-1][obj_key]) / range_obj
-#     return front_individuals
-
 def compute_crowding_distance(front_individuals):
     if not front_individuals: return []
     num_individuals = len(front_individuals)
@@ -661,29 +694,63 @@ def evaluate_population(prompts_to_evaluate, dataset, config, executor_config):
     return evaluated_population
 
 
-def generate_unique_offspring(current_population, config):
-    offspring_prompts = []
+def generate_unique_offspring(current_population, config, evolution_type="mono"):
+    """
+    Gera uma nova população de descendentes únicos a partir da população atual,
+    utilizando funções de seleção e crossover/mutação apropriadas para o tipo de evolução.
+
+    Args:
+        current_population (list): A população atual de indivíduos.
+        config (dict): Dicionário de configurações do experimento.
+        evolution_type (str): "mono" para mono-objetivo ou "multi" para multi-objetivo.
+
+    Returns:
+        list: Uma lista de strings, onde cada string é um prompt de um descendente único.
+    """
+    offspring_prompts_dicts = []
     existing_prompts = {ind['prompt'] for ind in current_population}
     population_size = config.get("population_size", 10)
-    k_tournament_parents = config.get("k_tournament_parents", 2)
+    num_parents_for_crossover = 2 # Geralmente 2 pais para crossover
     max_attempts = population_size * 3
     attempts = 0
-    while len(offspring_prompts) < population_size and attempts < max_attempts:
+    
+    print(f"[utils] Gerando até {population_size} descendentes únicos ({evolution_type}-objetivo).")
+
+    while len(offspring_prompts_dicts) < population_size and attempts < max_attempts:
         attempts += 1
-        if len(current_population) < 2:
-            print("[utils] [Offspring] População atual menor que 2, não é possível gerar offspring.")
+        if len(current_population) < num_parents_for_crossover:
+            print(f"[utils] [Offspring {evolution_type.capitalize()}] População atual menor que {num_parents_for_crossover}, não é possível gerar offspring.")
             break
-        parent_pair = tournament_selection_multiobjective(current_population, k_tournament_parents, 2)
-        print(f"[utils] [Offspring] Pais selecionados: '{parent_pair[0]['prompt'][:50]}...' e '{parent_pair[1]['prompt'][:50]}...'")
-        child_dict_list = mop_crossover_and_mutation_ga(parent_pair, config)
+        
+        parent_pair = []
+        crossover_mutation_func = None
+
+        if evolution_type == "mono":
+            parent_pair = roulette_wheel_selection(current_population, num_parents_for_crossover)
+            crossover_mutation_func = crossover_and_mutation_ga
+        elif evolution_type == "multi":
+            k_tournament_parents = config.get("k_tournament_parents", 2)
+            parent_pair = tournament_selection_multiobjective(current_population, k_tournament_parents, num_parents_for_crossover)
+            crossover_mutation_func = mop_crossover_and_mutation_ga
+        else:
+            print(f"[utils] [Offspring] Tipo de evolução desconhecido: {evolution_type}")
+            break
+
+        if len(parent_pair) < num_parents_for_crossover:
+            continue 
+        
+        child_dict_list = crossover_mutation_func(parent_pair, config)
+        
         if child_dict_list and "prompt" in child_dict_list[0] and "erro_" not in child_dict_list[0]["prompt"]:
             new_prompt = child_dict_list[0]["prompt"]
             if new_prompt not in existing_prompts:
-                offspring_prompts.append({"prompt": new_prompt})
+                offspring_prompts_dicts.append({"prompt": new_prompt})
                 existing_prompts.add(new_prompt)
-    if len(offspring_prompts) < population_size:
-        print(f"[utils] [!] Apenas {len(offspring_prompts)} filhos únicos foram gerados.")
-    return [p["prompt"] for p in offspring_prompts]
+
+    if len(offspring_prompts_dicts) < population_size:
+        print(f"[utils] [!] Apenas {len(offspring_prompts_dicts)} filhos únicos foram gerados ({evolution_type}-objetivo).")
+    
+    return [p["prompt"] for p in offspring_prompts_dicts] # Retorna uma lista de strings
 
 
 def select_survivors_nsgaii(parent_population, offspring_population, population_size):
@@ -705,24 +772,6 @@ def select_survivors_nsgaii(parent_population, offspring_population, population_
 
 # Seção: Persistência e Salvamento de Resultados
 
-# def save_generation_results(population, generation, config, output_dir):
-#     os.makedirs(output_dir, exist_ok=True)
-#     evaluator_name = config.get("evaluators", [{}])[0].get("name", "unknown_model").replace(":", "_").replace("/", "_")
-#     strategy_name = config.get("strategies", [{}])[0].get("name", "unknown_strategy")
-#     path = os.path.join(output_dir, f"results_gen_{generation}_{evaluator_name}_{strategy_name}.csv")
-#     data = []
-#     for ind in population:
-#         prompt, metrics = ind.get("prompt"), ind.get("metrics")
-#         if metrics and len(metrics) >= 4:
-#             acc, f1, tokens, alert_message = metrics[:4]
-#         else:
-#             acc, f1, tokens, alert_message = 0.0, 0.0, 0, "metrics_missing"
-#         data.append({"generation": generation, "prompt": prompt, "accuracy": acc, "f1_score": f1, "tokens": tokens, "alert": alert_message})
-    df = pd.DataFrame(data)
-    df = df.sort_values(by=["f1_score", "tokens"], ascending=[False, True])
-    df.to_csv(path, index=False, encoding='utf-8')
-    print(f"[utils] Resultados detalhados da geração {generation} salvos em {path}")
-
 def save_generation_results(population, generation, config, output_dir):
     os.makedirs(output_dir, exist_ok=True)
     evaluator_name = config.get("evaluators", [{}])[0].get("name", "unknown_model").replace(":", "_").replace("/", "_")
@@ -740,23 +789,6 @@ def save_generation_results(population, generation, config, output_dir):
     df = df.sort_values(by=["f1_score", "tokens"], ascending=[False, True])
     df.to_csv(path, index=False, encoding='utf-8')
     print(f"[utils] Resultados detalhados da geração {generation} salvos em {path}")
-
-
-# def save_sorted_population(population, generation, output_dir):
-#     os.makedirs(output_dir, exist_ok=True)
-#     sorted_log_path = os.path.join(output_dir, f"population_sorted_gen_{generation}.csv")
-#     data = []
-#     for ind in population:
-#         prompt, metrics = ind.get("prompt"), ind.get("metrics")
-#         if metrics and len(metrics) >= 4:
-#             acc, f1, tokens, alert_message = ind["metrics"][:4]
-#         else:
-#             acc, f1, tokens, alert_message = 0.0, 0.0, 0, "metrics_missing"
-#         data.append({"generation": generation, "prompt": prompt, "accuracy": acc, "f1_score": f1, "tokens": tokens, "alert": alert_message})
-    df = pd.DataFrame(data)
-    df = df.sort_values(by=["f1_score", "tokens"], ascending=[False, True])
-    df.to_csv(sorted_log_path, index=False, encoding='utf-8')
-    print(f"[utils] População ordenada da geração {generation} salva em {sorted_log_path}")
 
 def save_sorted_population(population, generation, output_dir):
     os.makedirs(output_dir, exist_ok=True)
