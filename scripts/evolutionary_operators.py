@@ -1,6 +1,6 @@
 import random
 import logging
-from .llm_clients import _call_openai_api # type: ignore
+from .llm_clients import _call_openai_api
 
 # Seção: Operadores Evolutivos
 logger = logging.getLogger(__name__)
@@ -16,7 +16,7 @@ def crossover_and_mutation_ga(pair_of_parent_prompts, config):
     template_generator = generator_config.get("template_generator", {})
     system_instruction = template_generator.get("system")
     user_instruction_crossover = template_generator.get("user_crossover")
-    user_instruction_mutation = template_generator.get("user_mutation", "Mute: {prompt}") # Adicionado valor padrão
+    user_instruction_mutation = template_generator.get("user_mutation", "Mute: {prompt}")
     prompt_a = pair_of_parent_prompts[0]["prompt"]
     prompt_b = pair_of_parent_prompts[1]["prompt"]
     crossover_messages = [{"role": "system", "content": system_instruction}, {"role": "user", "content": user_instruction_crossover.format(prompt_a=prompt_a, prompt_b=prompt_b)}]

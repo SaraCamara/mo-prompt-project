@@ -79,11 +79,11 @@ def load_dataset(config):
 
     try:
         if task == 'imdb':
-            df = pd.read_csv(filepath) # type: ignore
+            df = pd.read_csv(filepath)
             logger.info(f"Dataset IMDB carregado com {len(df)} registros.")
             return df
         elif task == 'squad':
-            df = pd.read_csv(filepath) # type: ignore
+            df = pd.read_csv(filepath)
             logger.info(f"Dataset SQuAD carregado com {len(df)} registros.")
             return df
         else:
@@ -95,21 +95,7 @@ def load_dataset(config):
         return None
 
 # Seção: Retomada de Execução
-
 def load_population_for_resumption(generation_to_load, base_output_dir, is_multiobjective):
-    """
-    Carrega a população de uma geração específica para retomar a execução.
-
-    Args:
-        generation_to_load (int): O número da geração a ser carregada.
-        base_output_dir (str): O diretório base onde os logs das gerações são salvos.
-
-        is_multiobjective (bool): True se for uma execução multi-objetivo, False para mono-objetivo.
-
-    Returns:
-        tuple: (list of dict, int) A população carregada e o número da próxima geração,
-               ou (None, None) se a população não puder ser carregada.
-    """
     if is_multiobjective:
         # Multi-objective saves Pareto fronts in 'per_generation_pareto'
         file_path = os.path.join(base_output_dir, "per_generation_pareto", f"pareto_gen_{generation_to_load}.csv")
@@ -131,11 +117,11 @@ def load_population_for_resumption(generation_to_load, base_output_dir, is_multi
             individual["tokens"] = row.get("tokens", 0)
 
             if is_multiobjective:
-                individual["f1"] = row.get("f1", 0.0) # Multi-objective uses 'f1'
+                individual["f1"] = row.get("f1", 0.0)
                 individual["rank"] = row.get("rank", -1)
                 individual["crowding_distance"] = row.get("crowding_distance", 0.0)
             else:
-                individual["f1"] = row.get("f1_score", 0.0) # Mono-objective uses 'f1_score'
+                individual["f1"] = row.get("f1_score", 0.0)
             
             individual["metrics"] = (individual["acc"], individual["f1"], individual["tokens"], "")
             loaded_population.append(individual)

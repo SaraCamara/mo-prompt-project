@@ -4,7 +4,7 @@ import matplotlib.pyplot as plt
 import matplotlib
 import logging
 
-matplotlib.use('Agg') # Configura o backend do Matplotlib para 'Agg' para evitar problemas de thread com GUI
+matplotlib.use('Agg') 
 
 # Seção: Persistência e Salvamento de Resultados
 logger = logging.getLogger(__name__)
@@ -80,8 +80,8 @@ def save_pareto_front_data(front_individuals, csv_path, plot_path):
     df_sorted.to_csv(csv_path, index=False, encoding='utf-8')
     plt.figure(figsize=(10, 6))
     plt.scatter(df["tokens"], df["f1"], c='blue', alpha=0.7, edgecolors='w', s=70)
-    plt.xlabel("Número de Tokens (Menor é Melhor)")
-    plt.ylabel("F1 Score (Maior é Melhor)")
+    plt.xlabel("Número de Tokens")
+    plt.ylabel("F1 Score")
     plt.title("Fronteira de Pareto (Tokens vs F1 Score)")
     plt.grid(True, linestyle='--', alpha=0.6)
     plt.savefig(plot_path)

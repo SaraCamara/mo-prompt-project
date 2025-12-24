@@ -12,18 +12,15 @@ logger = logging.getLogger(__name__)
 
 def extract_label(text: str) -> int | None:
     if not isinstance(text, str): return None
-    # Adiciona log para a resposta bruta do LLM antes da extração
     if text and len(text) > 0:
-        logger.debug(f"[Extract Label] Resposta bruta do LLM: '{text[:100]}...'")
+        logger.debug(f"[Extract Label] Resposta bruta do LLM: '{text[:100]}.'")
 
     match = re.search(r'\b(0|1)\b', text)
     if match: return int(match.group(1))
     return None
 
 
-def normalize_text(s):
-    """Lower text and remove punctuation, articles and extra whitespace."""
-    
+def normalize_text(s):    
     def remove_articles(text):
         return re.sub(r'\b(a|an|the)\b', ' ', text)
 
@@ -67,7 +64,7 @@ def count_tokens(prompt: str) -> int:
 def calculate_imdb_metrics(true_labels, predictions):
     """Calcula acurácia e F1-score para a tarefa IMDB."""
     acc = accuracy_score(true_labels, predictions)
-    f1 = f1_score(true_labels, predictions, average='binary') # Assumindo classificação binária (0 ou 1)
+    f1 = f1_score(true_labels, predictions, average='binary')
     return acc, f1
 
 
