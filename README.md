@@ -40,7 +40,16 @@ mo-prompt-project/
 │   ├── main.py
 │   ├── mono_evolution.py
 │   ├── multi_evolution.py  
-│   └── utils.py
+│   ├── utils.py
+│   ├── config_data_loader.py
+│   ├── llm_clients.py
+│   ├── evolutionary_operators.py
+│   ├── evaluation_metrics.py
+│   ├── prompt_evaluator.py
+│   ├── selection_algorithms.py
+│   ├── nsga2_algorithms.py
+│   ├── population_manager.py
+│   └── results_saver.py
 ├── requirements.txt
 ├── README.md
 └── .gitignore
@@ -48,14 +57,13 @@ mo-prompt-project/
 
 ### Hiperparâmetros
 
-
 | Nome              | Valor |
-|-------------------|-------|
-| `top_k`           | 10    |
-| `multiobjective`  | true  |
-| `max_generations` | 10    |
-| `population_size` | 10    |
-| `imdb_pt_subset`  | 100   |
+|-------------------|--------------|
+| `top_k`           | 10           |
+| `max_generations` | 10           |
+| `population_size` | 10           |
+| `stagnation_limit`| 3            |
+| `k_tournament_parents` | 2            |
 
 
 ---
@@ -128,29 +136,27 @@ Instruções para consistência dos resultados em diferentes contextos ou situa�
 * Dataset: repositório `data/` e dataset_path em `experimentals_setting.yaml`.
 * Prompts iniciais: repositório `data/` .
 * Template de prompts: repositório `config/` em `experimentals_setting.yaml`.
-* Modelos LLM usados: repositório `config/`  em `experimentals_setting.yaml`, `credentials.yaml` e, repositório `scripts/` funções em `utils.py`.
+* Modelos LLM usados: repositório `config/` em `experimentals_setting.yaml`, `credentials.yaml` e, repositório `scripts/llm_clients.py` e `scripts/evolutionary_operators.py`.
 
 ---
 
 ## Experimentos
-
 ### Tarefa:
-
-Classificação binária de sentimento sobre resenhas de filmes (positivo ou negativo).
+Classificação binária de sentimento sobre resenhas de filmes (positivo ou negativo) e Extração de Respostas (Question Answering).
 
 #### Testes realizados:
 
 ```mermaid
 graph LR;
 
-subgraph Estratégias de otimização
+subgraph Estratégias de Otimização
     Mono-objetiva
     Multi-objetiva
     end
 
 subgraph Modelos de avaliação  
     gemma:2b
-    sabiazinho3
+    sabiazinho-3
     end
 
 subgraph Estratégias de prompting
@@ -173,26 +179,26 @@ Mono-objetiva & Multi-objetiva ------>  gemma:2b & sabiazinho3 ------> zero-shot
 
 a. Modelo `gemma:2b`
 
-    `logs/evo/gemma/zero-shot/final_results.csv`
-    `logs/evo/gemma/few-shot/final_results.csv`
+    `logs/evo/gemma_2b/zero-shot/final_results.csv`
+    `logs/evo/gemma_2b/few-shot/final_results.csv`
 
 b. Modelo `sabiazinho-3`
 
-    `logs/evo/sabiazinho/zero-shot/final_results.csv`
-    `logs/evo/sabiazinho/few-shot/final_results.csv`
+    `logs/evo/sabiazinho_3/zero-shot/final_results.csv`
+    `logs/evo/sabiazinho_3/few-shot/final_results.csv`
 
 ### 2. Multi objetivo - MOPrompt
 
 a. Modelo `gemma:2b`
 
-    `logs/mop/gemma/zero-shot/final_results.csv`
-    `logs/mop/gemma/few-shot/final_results.csv`
+    `logs/mop/gemma_2b/zero-shot/final_results.csv`
+    `logs/mop/gemma_2b/few-shot/final_results.csv`
 
 b. Modelo `sabiazinho-3`
 
-    `logs/mop/sabiazinho/zero-shot/final_results.csv`
-    `logs/mop/sabiazinho/few-shot/final_results.csv`
-    `logs/mop/sabiazinho/few-shot_top5/final_results.csv`
+    `logs/mop/sabiazinho_3/zero-shot/final_results.csv`
+    `logs/mop/sabiazinho_3/few-shot/final_results.csv`
+    `logs/mop/sabiazinho_3/few-shot_top5/final_results.csv`
 
 ---
 

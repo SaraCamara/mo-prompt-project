@@ -1,14 +1,7 @@
 # utils.py
-import collections
-import json
 import subprocess
 import os
-import re
-import yaml
-import random
-import matplotlib
 import sys
-import numpy as np
 
 
 # Instalação de dependências

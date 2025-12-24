@@ -4,11 +4,10 @@ import sys
 import os
 import re
 import yaml
-import json
-import pandas as pd
 from mono_evolution import run_mono_evolution
 from multi_evolution import run_multi_evolution
-from utils import load_credentials_from_yaml, load_settings, load_dataset, load_initial_prompts, load_population_for_resumption, install_requirements, get_validated_numerical_input
+from scripts.utils import install_requirements, get_validated_numerical_input
+from scripts.config_data_loader import load_credentials_from_yaml, load_settings, load_dataset, load_initial_prompts, load_population_for_resumption
 
 if __name__ == "__main__":
     install_requirements()
@@ -160,4 +159,3 @@ if __name__ == "__main__":
                             start_generation=start_generation, initial_population=loaded_population)
 
     print(f"\n[main] Execução finalizada. Resultados disponíveis em:\n - {output_csv}\n")
-

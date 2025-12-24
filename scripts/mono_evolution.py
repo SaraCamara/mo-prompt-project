@@ -2,9 +2,9 @@
 import os
 import pandas as pd
 import random
-from utils import (
-    evaluate_population, generate_unique_offspring, save_generation_results,
-    save_final_results, save_sorted_population
+from scripts.population_manager import evaluate_population, generate_unique_offspring
+from scripts.results_saver import (
+    save_generation_results, save_final_results, save_sorted_population
 )
 
 def run_mono_evolution(config, dataset, initial_prompts, output_csv_path, start_generation=0, initial_population=None):

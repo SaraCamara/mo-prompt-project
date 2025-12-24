@@ -1,14 +1,9 @@
 # multi_evolution.py
 import os
 import random 
-from utils import (
-    evaluate_population,
-    compute_crowding_distance,    
-    generate_unique_offspring, 
-    select_survivors_nsgaii,  
-    fast_non_dominated_sort,
-    save_pareto_front_data
-)
+from scripts.population_manager import evaluate_population, generate_unique_offspring, select_survivors_nsgaii
+from scripts.nsga2_algorithms import compute_crowding_distance, fast_non_dominated_sort
+from scripts.results_saver import save_pareto_front_data
 
 def run_multi_evolution(config, dataset, initial_prompts_text, output_csv_path, output_plot_path, start_generation=0, initial_population=None):
     print("[multi_evolution] Iniciando execução da evolução multiobjetivo")
