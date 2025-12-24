@@ -3,8 +3,8 @@ import os
 import pandas as pd
 import random
 import logging
-from scripts.population_manager import evaluate_population, generate_unique_offspring
-from scripts.results_saver import (
+from .population_manager import evaluate_population, generate_unique_offspring # type: ignore
+from .results_saver import ( # type: ignore
     save_generation_results, save_final_results, save_sorted_population
 )
 

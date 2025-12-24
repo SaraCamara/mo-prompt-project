@@ -1,6 +1,6 @@
 import random
-from scripts.llm_clients import _call_openai_api
 import logging
+from .llm_clients import _call_openai_api # type: ignore
 
 # Seção: Operadores Evolutivos
 logger = logging.getLogger(__name__)

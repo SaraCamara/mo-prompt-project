@@ -1,9 +1,11 @@
 import os
 import concurrent.futures
-from scripts.llm_clients import query_maritalk, query_ollary
-from scripts.evaluation_metrics import extract_label, compute_exact, compute_f1, count_tokens, calculate_imdb_metrics, calculate_squad_metrics
+import logging
+from .llm_clients import query_maritalk, query_ollama # type: ignore
+from .evaluation_metrics import extract_label, compute_exact, compute_f1, count_tokens, calculate_imdb_metrics, calculate_squad_metrics # type: ignore
 
 # Seção: Avaliação de Prompts
+logger = logging.getLogger(__name__)
 
 def evaluate_prompt_single(prompt_instruction: str, text: str, label: int,
                         evaluator_config: dict, strategy_config: dict,
@@ -13,7 +15,7 @@ def evaluate_prompt_single(prompt_instruction: str, text: str, label: int,
     if not isinstance(prompt_instruction, str): prompt_instruction = str(prompt_instruction)
     if not isinstance(text, str): text = str(text)
     if not template_str:
-        print(f"[prompt_evaluator] Template não encontrado para a estratégia '{strategy_name}'.")
+        logger.error(f"Template não encontrado para a estratégia '{strategy_name}'.")
         return 1 - label, "erro_template_ausente"
     instruction_suffix = "\nResponda apenas com '1' para resenhas positivas ou '0' para resenhas negativas."
     format_args = {"text": text, "prompt_instruction": prompt_instruction}
@@ -26,13 +28,13 @@ def evaluate_prompt_single(prompt_instruction: str, text: str, label: int,
     try:
         full_prompt = template_str.format(**format_args)
     except KeyError as e:
-        print(f"[prompt_evaluator] ERRO DE FORMATAÇÃO para '{strategy_name}': placeholder {e} ausente.")
+        logger.error(f"ERRO DE FORMATAÇÃO para '{strategy_name}': placeholder {e} ausente.")
         return 1 - label, f"erro_formatacao_template"
     evaluator_type = evaluator_config.get("tipo", "").lower()
     if evaluator_type == "maritalk": response_text = query_maritalk(full_prompt, evaluator_config)
     elif evaluator_type == "ollama": response_text = query_ollama(full_prompt, evaluator_config)
     else:
-        print(f"[prompt_evaluator] Tipo de avaliador desconhecido: '{evaluator_type}'")
+        logger.error(f"Tipo de avaliador desconhecido: '{evaluator_type}'")
         response_text = "erro_tipo_avaliador"
     prediction = extract_label(response_text)
     if prediction is None:
@@ -44,7 +46,7 @@ def evaluate_prompt_single_squad(prompt_instruction: str, context: str, question
     template_str = strategy_config.get("template")
     
     if not template_str:
-        print(f"[prompt_evaluator] Template não encontrado para a estratégia SQuAD.")
+        logger.error(f"Template não encontrado para a estratégia SQuAD.")
         return ""
 
     format_args = {"prompt_instruction": prompt_instruction, "context": context, "question": question}
@@ -67,12 +69,12 @@ def evaluate_prompt_single_squad(prompt_instruction: str, context: str, question
         return "erro_tipo_avaliador_desconhecido"
 
     except KeyError as e:
-        print(f"[prompt_evaluator] ERRO DE FORMATAÇÃO para SQuAD: placeholder '{e.args[0]}' ausente no dicionário de argumentos.")
+        logger.error(f"ERRO DE FORMATAÇÃO para SQuAD: placeholder '{e.args[0]}' ausente no dicionário de argumentos.")
         # Debug: Imprima o template para ver o que ele está esperando
-        print(f"Template esperado: {template_str}") 
+        logger.debug(f"Template esperado: {template_str}") 
         return ""
     except Exception as e:
-        print(f"[prompt_evaluator] Erro inesperado ao formatar prompt: {e}")
+        logger.error(f"Erro inesperado ao formatar prompt: {e}")
         return ""
 
 
@@ -83,7 +85,7 @@ def evaluate_prompt(prompt_instruction, dataset, executor_config, strategy_confi
     elif task == 'squad':
         return evaluate_prompt_squad(prompt_instruction, dataset, executor_config, strategy_config, experiment_settings, output_dir)
     else:
-        print(f"[prompt_evaluator] ERRO: Tarefa de avaliação '{task}' desconhecida.")
+        logger.error(f"Tarefa de avaliação '{task}' desconhecida.")
         return 0, 0, 0, "tarefa_desconhecida"
 
 def evaluate_prompt_squad(prompt_instruction, dataset, executor_config, strategy_config, experiment_settings, output_dir):
@@ -91,7 +93,7 @@ def evaluate_prompt_squad(prompt_instruction, dataset, executor_config, strategy
     total_f1 = 0
     total_tokens = count_tokens(prompt_instruction)
 
-    print(f"[prompt_evaluator] [SQuAD] Avaliando prompt_instruction: '{prompt_instruction}'")
+    logger.info(f"[SQuAD] Avaliando prompt_instruction: '{prompt_instruction}'")
     # Configure o número máximo de workers. Ajuste este valor com base nos limites de taxa da API
     MAX_WORKERS = 10
     

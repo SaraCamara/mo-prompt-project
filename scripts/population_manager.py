@@ -1,9 +1,9 @@
 import os
 import logging
-from scripts.prompt_evaluator import evaluate_prompt
-from scripts.selection_algorithms import roulette_wheel_selection, tournament_selection_multiobjective
-from scripts.evolutionary_operators import crossover_and_mutation_ga, mop_crossover_and_mutation_ga
-from scripts.nsga2_algorithms import fast_non_dominated_sort, compute_crowding_distance
+from .prompt_evaluator import evaluate_prompt # type: ignore
+from .selection_algorithms import roulette_wheel_selection, tournament_selection_multiobjective # type: ignore
+from .evolutionary_operators import crossover_and_mutation_ga, mop_crossover_and_mutation_ga # type: ignore
+from .nsga2_algorithms import fast_non_dominated_sort, compute_crowding_distance # type: ignore
 
 # Seção: Funções Auxiliares de Evolução (Gerenciamento de População)
 logger = logging.getLogger(__name__)

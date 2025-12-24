@@ -2,9 +2,9 @@
 import os
 import random 
 import logging
-from scripts.population_manager import evaluate_population, generate_unique_offspring, select_survivors_nsgaii # type: ignore
-from scripts.nsga2_algorithms import compute_crowding_distance, fast_non_dominated_sort
-from scripts.results_saver import save_pareto_front_data
+from .population_manager import evaluate_population, generate_unique_offspring, select_survivors_nsgaii # type: ignore
+from .nsga2_algorithms import compute_crowding_distance, fast_non_dominated_sort # type: ignore
+from .results_saver import save_pareto_front_data # type: ignore
 
 def run_multi_evolution(config, dataset, initial_prompts_text, output_csv_path, output_plot_path, start_generation=0, initial_population=None):
     print("[multi_evolution] Iniciando execução da evolução multiobjetivo")
@@ -36,16 +36,16 @@ def run_multi_evolution(config, dataset, initial_prompts_text, output_csv_path, 
         logger.info(f"População inicial avaliada. Tamanho: {len(current_population)}")
 
         # Log para acompanhar os scores de cada indivíduo
-        print("[multi_evolution] Scores da população inicial:")
+        logger.info("Scores da população inicial:")
         for i, ind in enumerate(current_population):
             # Usando .get() para evitar erros caso uma chave não exista
-            print(f"  - Prompt: \"{ind.get('prompt', 'N/A')}\" | F1: {ind.get('f1', 0.0):.4f} | Acc: {ind.get('acc', 0.0):.4f} | Tokens: {ind.get('tokens', 0)}")
+            logger.info(f"  - Prompt: \"{ind.get('prompt', 'N/A')}\" | F1: {ind.get('f1', 0.0):.4f} | Acc: {ind.get('acc', 0.0):.4f} | Tokens: {ind.get('tokens', 0)}")
 
         # Classifica a população inicial para obter os ranks
         initial_fronts = fast_non_dominated_sort(current_population)
 
         # Calcula a crowding distance para cada fronteira da população inicial
-        print("[multi_evolution] Calculando crowding distance para a população inicial...")
+        logger.info("Calculando crowding distance para a população inicial...")
         for front in initial_fronts:
             compute_crowding_distance(front)
 
@@ -72,10 +72,10 @@ def run_multi_evolution(config, dataset, initial_prompts_text, output_csv_path, 
         evaluated_offspring = evaluate_population(offspring_prompts, dataset, config, executor_config)
         logger.info("Scores dos offspring avaliados:")
         for i, ind in enumerate(evaluated_offspring[:5]): # Loga os scores dos primeiros 5 offsprings avaliados
-            print(f"  - Prompt: \"{ind.get('prompt', 'N/A')[:50]}...\" | F1: {ind.get('f1', 0.0):.4f} | Acc: {ind.get('acc', 0.0):.4f} | Tokens: {ind.get('tokens', 0)}")
+            logger.info(f"  - Prompt: \"{ind.get('prompt', 'N/A')[:50]}...\" | F1: {ind.get('f1', 0.0):.4f} | Acc: {ind.get('acc', 0.0):.4f} | Tokens: {ind.get('tokens', 0)}")
         
         current_population = select_survivors_nsgaii(current_population, evaluated_offspring, population_size)
-        print(f"[multi_evolution] Nova população selecionada. Tamanho: {len(current_population)}")
+        logger.info(f"Nova população selecionada. Tamanho: {len(current_population)}")
 
         current_pareto_front = [ind for ind in current_population if ind.get('rank') == 0]
         if current_pareto_front:

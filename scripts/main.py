@@ -5,11 +5,11 @@ import os
 import logging
 import re
 import yaml
-from mono_evolution import run_mono_evolution
-from multi_evolution import run_multi_evolution
-from scripts.utils import install_requirements, get_validated_numerical_input
-from scripts.config_data_loader import load_credentials_from_yaml, load_settings, load_dataset, load_initial_prompts, load_population_for_resumption
-from scripts.logger_config import setup_logging
+from .mono_evolution import run_mono_evolution
+from .multi_evolution import run_multi_evolution
+from .utils import install_requirements, get_validated_numerical_input
+from .config_data_loader import load_credentials_from_yaml, load_settings, load_dataset, load_initial_prompts, load_population_for_resumption
+from .logger_config import setup_logging
 
 if __name__ == "__main__":
     setup_logging() # Configura o sistema de logging
@@ -58,7 +58,7 @@ if __name__ == "__main__":
     optimization_type_choice = get_validated_numerical_input("Digite o número da opção desejada (0 ou 1): ", 2)
     is_multiobjective = (optimization_type_choice == 1)
     config["objective"] = "multiobjetivo" if is_multiobjective else "mono-objetivo"
-    print(f"[main] Tipo de otimização selecionado: [{config['objective'].capitalize()}]")
+    logger.info(f"Tipo de otimização selecionado: [{config['objective'].capitalize()}]")
 
 
     # Seleção de Avaliador
@@ -69,12 +69,12 @@ if __name__ == "__main__":
         sys.exit(1)
 
     for i, evaluator_config in enumerate(available_evaluators):
-        print(f"  {i}) {evaluator_config.get('name', 'Avaliador Desconhecido')}")
+        logger.info(f"  {i}) {evaluator_config.get('name', 'Avaliador Desconhecido')}")
 
     evaluator_choice_idx = get_validated_numerical_input("Digite o número da opção desejada: ", len(available_evaluators))
     selected_evaluator_config = available_evaluators[evaluator_choice_idx]
     evaluator_name = selected_evaluator_config.get("name", "unknown_model")
-    print(f"[main] Avaliador selecionado: {evaluator_name}")
+    logger.info(f"Avaliador selecionado: {evaluator_name}")
     config["evaluators"] = [selected_evaluator_config]
 
     # Extrai o nome base do modelo para usar no caminho do diretório
@@ -90,12 +90,12 @@ if __name__ == "__main__":
         sys.exit(1)
 
     for i, strategy_config in enumerate(available_strategies):
-        print(f"  {i}) {strategy_config.get('name', 'Estratégia Desconhecida')}")
+        logger.info(f"  {i}) {strategy_config.get('name', 'Estratégia Desconhecida')}")
 
     strategy_choice_idx = get_validated_numerical_input("Digite o número da opção desejada: ", len(available_strategies))
     selected_strategy_config = available_strategies[strategy_choice_idx]
     strategy_name = selected_strategy_config["name"]
-    print(f"[main] Estratégia de prompt selecionada: {strategy_name}")
+    logger.info(f"Estratégia de prompt selecionada: {strategy_name}")
     config["strategies"] = [selected_strategy_config]
 
 
@@ -117,9 +117,9 @@ if __name__ == "__main__":
         logger.info(f" - Plot: {output_plot}")
         
     # Lógica para iniciar ou retomar
-    print("\n\n[main] [>] Deseja retomar uma execução anterior?")
-    print("  0) Iniciar nova execução")
-    print("  1) Retomar de uma geração específica")
+    logger.info("\n\n[>] Deseja retomar uma execução anterior?")
+    logger.info("  0) Iniciar nova execução")
+    logger.info("  1) Retomar de uma geração específica")
     resume_choice = get_validated_numerical_input("Digite o número da opção desejada (0 ou 1): ", 2)
 
     start_generation = 0
