@@ -2,11 +2,13 @@ dataset_path_imdb: data/imdb_pt_subset.csv
 dataset_path_squad: data/squad_fitness_set.csv
 results_log_path: logs/final_results.csv
 
-top_k: 10
-max_generations: 10
-population_size: 10
-stagnation_limit: 3
-k_tournament_parents: 2
+evolution_params:
+  top_k: 10
+  max_generations: 10
+  population_size: 10
+  stagnation_limit: 3
+  k_tournament_parents: 2
+  mutation_rate: 0.8
 
 ollama_server_url: http://0.0.0.0:11434/api/chat
 
@@ -66,16 +68,13 @@ strategies_imdb:
     examples: |
       Texto: "Esta versão de Anna Christie está em alemão. Greta Garbo interpreta Anna Christie, mas todos os outros personagens têm atores diferentes da versão em inglês. Ambos foram filmados para trás porque Garbo teve um número de seguidores na Alemanha. É uma boa história e um imperdível para os fãs de Garbo."
       Classificação: positivo
-
       ---
-
       Texto: "Além de ser chato, as cenas eram opressivas e escuras. O filme tentou retratar algum tipo de moral, mas caiu sem mensagem. Quais foram as qualidades redentoras ??Além disso, acho que não poderia fazer com que os bibliotecários pareçam mais sem glamour do que."
       Classificação: negativo
-      
       ---
-      
       Texto: "Um filme absolutamente maravilhoso. A história é comovente e os personagens são muito bem desenvolvidos. Recomendo a todos que apreciam um bom drama."
       Classificação: positivo
+      ---
     template: |
       {prompt_instruction}
 
@@ -98,7 +97,7 @@ generator_squad:
       Instrução B: "{prompt_b}"
       Realize uma combinação das duas instruções, como em uma operação de crossover, mantendo clareza, coerência e o propósito original de extrair uma resposta de um contexto.
     rate_user_mutation: |
-      Assim como uma mutação que introduz variedade, reescreva este prompt de forma totalmente diferente, mudando a estrutura e o tom mantendo seu objetivo de extrair uma resposta de um contexto com precisão: "{prompt}"
+      Assim como uma mutação que introduz variedade, reescreva este prompt de forma totalmente diferente, mudando a estrutura e o tom, mas mantendo seu objetivo de extrair uma resposta de um contexto com precisão: "{prompt}"
       A variação pode incluir reformulação, troca de termos ou reorganização sintática.
 
 strategies_squad:
@@ -114,26 +113,21 @@ strategies_squad:
       Contexto: "A Amazônia é a maior floresta tropical do mundo, cobrindo grande parte do noroeste do Brasil e estendendo-se até a Colômbia, Peru e outros países da América do Sul. É famosa por sua biodiversidade."
       Pergunta: "Qual é a maior floresta tropical do mundo?"
       Resposta: "A Amazônia"
-      
       ---
-      
       Contexto: "Nikola Tesla (1856–1943) foi um inventor, engenheiro eletrotécnico e engenheiro mecânico sérvio-americano, mais conhecido por suas contribuições ao projeto do moderno sistema de fornecimento de eletricidade em corrente alternada (CA)."
       Pergunta: "Em que ano Nikola Tesla morreu?"
       Resposta: "1943"
-      
       ---
-      
       Contexto: "O futebol é o esporte mais popular do Brasil. A seleção brasileira ganhou a Copa do Mundo da FIFA cinco vezes, mais do que qualquer outra nação."
       Pergunta: "Quantas vezes o Brasil ganhou a Copa do Mundo?"
       Resposta: "cinco vezes"
-      
+      ---
     template: |
       {prompt_instruction}
       Sua tarefa é extrair a resposta exata do texto abaixo. A resposta deve ser um trecho copiado diretamente do contexto, sem nenhuma palavra ou explicação adicional.
       Por exemplo:
       {examples}
 
-      ---
       Contexto: "{context}"
       Pergunta: "{question}"
       Resposta:
