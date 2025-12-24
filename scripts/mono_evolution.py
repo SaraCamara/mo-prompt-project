@@ -2,6 +2,7 @@
 import os
 import pandas as pd
 import random
+import logging
 from scripts.population_manager import evaluate_population, generate_unique_offspring
 from scripts.results_saver import (
     save_generation_results, save_final_results, save_sorted_population
@@ -9,6 +10,8 @@ from scripts.results_saver import (
 
 def run_mono_evolution(config, dataset, initial_prompts, output_csv_path, start_generation=0, initial_population=None):
     print("[mono_evolution] Iniciando execução da evolução mono-objetivo")
+    logger = logging.getLogger(__name__)
+    logger.info("Iniciando execução da evolução mono-objetivo")
 
     evaluator_config = config["evaluators"][0]
     strategy_config = config["strategies"][0]
@@ -19,25 +22,25 @@ def run_mono_evolution(config, dataset, initial_prompts, output_csv_path, start_
     generation_log_dir = os.path.join(base_output_dir, "generations_detail")
     os.makedirs(generation_log_dir, exist_ok=True)
 
-    print(f"[mono_evolution] Avaliador: {evaluator_config['name']}")
-    print(f"[mono_evolution] Estratégia: {strategy_config['name']}")
+    logger.info(f"Avaliador: {evaluator_config['name']}")
+    logger.info(f"Estratégia: {strategy_config['name']}")
 
     population = []
     current_generation = start_generation
 
     if initial_population:
-        print(f"\n[mono_evolution] Retomando execução da Geração {start_generation - 1} com população carregada.")
+        logger.info(f"Retomando execução da Geração {start_generation - 1} com população carregada.")
         population = initial_population
     else:
         # Passo 1: Avaliação da População Inicial
-        print("\n[mono_evolution] Avaliando população inicial.")
+        logger.info("Avaliando população inicial.")
         population = evaluate_population(initial_prompts, dataset, config, evaluator_config)
         save_sorted_population(population, 0, generation_log_dir)
 
     # Ciclo de Gerações (ajustado para retomar)
     for generation in range(current_generation, config["max_generations"]):
         current_generation_number = generation
-        print(f"\n[mono_evolution]--- Geração {current_generation_number}---")
+        logger.info(f"--- Geração {current_generation_number}---")
 
         try:
             # Geração de Filhos usando a função genérica do utils
@@ -49,10 +52,10 @@ def run_mono_evolution(config, dataset, initial_prompts, output_csv_path, start_
             
             # offspring_prompts_list_of_dicts will be a list of strings here
             if not offspring_prompts_list_of_dicts:
-                print("[mono_evolution] [!] Nenhum descendente único foi gerado. Pulando para a próxima geração.")
+                logger.warning("Nenhum descendente único foi gerado. Pulando para a próxima geração.")
                 continue
 
-            print(f"[mono_evolution] {len(offspring_prompts_list_of_dicts)} descendentes gerados. Avaliando.")
+            logger.info(f"{len(offspring_prompts_list_of_dicts)} descendentes gerados. Avaliando.")
 
             # Avaliação dos Filhos
             evaluated_offspring = evaluate_population(offspring_prompts_list_of_dicts, dataset, config, evaluator_config)
@@ -65,9 +68,9 @@ def run_mono_evolution(config, dataset, initial_prompts, output_csv_path, start_
             population = combined_population[:population_size]
             
             if population:
-                print(f"[mono_evolution] População da próxima geração selecionada (Tamanho: {len(population)}). Melhor f1_score: {population[0]['metrics'][1]:.4f}")
+                logger.info(f"População da próxima geração selecionada (Tamanho: {len(population)}). Melhor f1_score: {population[0]['metrics'][1]:.4f}")
             else:
-                print("[mono_evolution] [!] População ficou vazia após seleção.")
+                logger.warning("População ficou vazia após seleção.")
 
 
             # Salvando Resultados da Geração
@@ -75,13 +78,13 @@ def run_mono_evolution(config, dataset, initial_prompts, output_csv_path, start_
             save_generation_results(population, current_generation_number, config, generation_log_dir) 
         
         except Exception as e:
-            print(f"[mono_evolution] [✗] Erro na geração {current_generation_number}: {e}")
+            logger.error(f"Erro na geração {current_generation_number}: {e}", exc_info=True)
             import traceback
             traceback.print_exc()
             continue 
 
     # Fim do Ciclo Evolutivo
-    print("\n[mono_evolution] Evolução mono-objetivo concluída.")
-    print("[mono_evolution] Salvando resultados finais.")
+    logger.info("Evolução mono-objetivo concluída.")
+    logger.info("Salvando resultados finais.")
     save_final_results(population, config, output_csv_path) 
-    print(f"[mono_evolution] [✓] Resultados salvos em {output_csv_path}")
+    logger.info(f"Resultados salvos em {output_csv_path}")

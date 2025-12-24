@@ -1,15 +1,17 @@
 import random
 from scripts.llm_clients import _call_openai_api
+import logging
 
 # Seção: Operadores Evolutivos
+logger = logging.getLogger(__name__)
 
 def crossover_and_mutation_ga(pair_of_parent_prompts, config):
     generator_config = config.get("generator")
     if not generator_config:
-        print("[evolutionary_operators] Configuração do gerador não encontrada.")
+        logger.error("Configuração do gerador não encontrada.")
         return [{"prompt": "erro_configuracao_gerador"}]
     if len(pair_of_parent_prompts) != 2:
-        print("[evolutionary_operators] crossover_and_mutation_ga espera exatamente dois pais.")
+        logger.error("crossover_and_mutation_ga espera exatamente dois pais.")
         return [{"prompt": "erro_numero_pais_invalido"}]
     template_generator = generator_config.get("template_generator", {})
     system_instruction = template_generator.get("system")
@@ -50,17 +52,17 @@ def mop_crossover_and_mutation_ga(pair_of_parent_prompts, config):
     prompt_a = pair_of_parent_prompts[0]["prompt"] if isinstance(pair_of_parent_prompts[0], dict) else pair_of_parent_prompts[0]
     prompt_b = pair_of_parent_prompts[1]["prompt"] if isinstance(pair_of_parent_prompts[1], dict) else pair_of_parent_prompts[1]
 
-    print(f"[evolutionary_operators] [Crossover/Mutação] Pais: '{prompt_a[:100]}...' e '{prompt_b[:100]}...'")
+    logger.info(f"[Crossover/Mutação] Pais: '{prompt_a[:100]}...' e '{prompt_b[:100]}...'")
     # CROSSOVER
     crossover_messages = [
         {"role": "system", "content": system_instruction},
         {"role": "user", "content": user_instruction_crossover.format(prompt_a=prompt_a, prompt_b=prompt_b)}
     ]
-    
+
     # Temperatura média para o crossover (ex: 0.5 - 0.7)
     current_prompt = _call_openai_api(crossover_messages, generator_config, temperature=0.6)
-    print(f"[evolutionary_operators] [Crossover/Mutação] Crossover gerado: '{current_prompt[:100]}...'")
-    
+    logger.info(f"[Crossover/Mutação] Crossover gerado: '{current_prompt[:100]}...'")
+
     if "erro_" in current_prompt:
         return [{"prompt": f"erro_crossover ({current_prompt})"}]
 
@@ -68,7 +70,7 @@ def mop_crossover_and_mutation_ga(pair_of_parent_prompts, config):
     # Gera um número aleatório entre 0.0 e 1.0
     # Se for MENOR que a taxa (ex: 0.6), aplica a mutação.
     # Caso contrário, o filho é apenas o resultado do crossover.
-    
+
     if random.random() < mutation_rate:
         # print(f"[evolutionary_operators] Aplicando mutação (Taxa: {mutation_rate})...")
         mutation_messages = [
@@ -76,9 +78,9 @@ def mop_crossover_and_mutation_ga(pair_of_parent_prompts, config):
             {"role": "user", "content": user_instruction_mutation.format(prompt=current_prompt)}
         ]
         # Aumento de temperatura para forçar diversidade se ocorrer a mutação
-        print(f"[evolutionary_operators] [Crossover/Mutação] Aplicando mutação (Taxa: {mutation_rate})...")
+        logger.info(f"[Crossover/Mutação] Aplicando mutação (Taxa: {mutation_rate})...")
         mutated_prompt = _call_openai_api(mutation_messages, generator_config, temperature=0.9)
-        
+
         if "erro_" not in mutated_prompt:
             current_prompt = mutated_prompt
         else:

@@ -1,15 +1,17 @@
 import random
 import numpy as np
+import logging
 
 # Seção: Algoritmos de Seleção
+logger = logging.getLogger(__name__)
 
 def roulette_wheel_selection(population, num_parents_to_select):
     if not population:
-        print("[selection_algorithms] [!] População vazia para seleção por roleta.")
+        logger.warning("População vazia para seleção por roleta.")
         return []
     valid_individuals = [ind for ind in population if "metrics" in ind and ind["metrics"][0] >= 0]
     if not valid_individuals:
-        print("[selection_algorithms] [!] Nenhum indivíduo com fitness válida para seleção.")
+        logger.warning("Nenhum indivíduo com fitness válida para seleção.")
         return random.sample(population, min(num_parents_to_select, len(population)))
     fitness_values = [ind["metrics"][0] for ind in valid_individuals]
     total_fitness = sum(fitness_values)

@@ -3,16 +3,18 @@ import re
 import string
 from nltk.tokenize import TreebankWordTokenizer
 from sklearn.metrics import accuracy_score, f1_score
+import logging
 
 tokenizer = TreebankWordTokenizer()
 
 # Seção: Avaliação de Prompts (Métricas e Extração)
+logger = logging.getLogger(__name__)
 
 def extract_label(text: str) -> int | None:
     if not isinstance(text, str): return None
     # Adiciona log para a resposta bruta do LLM antes da extração
     if text and len(text) > 0:
-        print(f"[evaluation_metrics] [Extract Label] Resposta bruta do LLM: '{text[:100]}...'")
+        logger.debug(f"[Extract Label] Resposta bruta do LLM: '{text[:100]}...'")
 
     match = re.search(r'\b(0|1)\b', text)
     if match: return int(match.group(1))

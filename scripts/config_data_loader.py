@@ -2,33 +2,35 @@ import os
 import re
 import yaml
 import pandas as pd
+import logging
 
 # Seção: Configuração e Carregamento de Dados
+logger = logging.getLogger(__name__)
 
 def load_credentials_from_yaml(path_to_yaml="config/credentials.yaml"):
     if not os.path.exists(path_to_yaml):
-        print(f"[config_data_loader] ERRO: Arquivo de credenciais '{path_to_yaml}' não encontrado.")
+        logger.error(f"Arquivo de credenciais '{path_to_yaml}' não encontrado.")
         return None
     try:
         with open(path_to_yaml, "r") as f:
             creds = yaml.safe_load(f)
         if not creds:
-            print(f"[config_data_loader] ERRO: Arquivo de credenciais '{path_to_yaml}' está vazio ou malformado.")
+            logger.error(f"Arquivo de credenciais '{path_to_yaml}' está vazio ou malformado.")
             return None
         
-        print(f"[config_data_loader] Credenciais carregadas de '{path_to_yaml}'.")
+        logger.info(f"Credenciais carregadas de '{path_to_yaml}'.")
         return creds
     except Exception as e:
-        print(f"[config_data_loader] ERRO ao carregar credenciais de '{path_to_yaml}': {e}")
+        logger.error(f"Erro ao carregar credenciais de '{path_to_yaml}': {e}")
         return None
 
 
 def load_settings(settings_path="config/experiment_settings.yaml", credentials=None):
     if not os.path.exists(settings_path):
-        print(f"[config_data_loader] ERRO: Arquivo de configurações '{settings_path}' não encontrado.")
+        logger.error(f"Arquivo de configurações '{settings_path}' não encontrado.")
         return None
     if credentials is None:
-        print(f"[config_data_loader] ERRO: Credenciais não fornecidas para resolver placeholders.")
+        logger.error(f"Credenciais não fornecidas para resolver placeholders.")
         return None
     try:
         with open(settings_path, "r") as f:
@@ -39,17 +41,17 @@ def load_settings(settings_path="config/experiment_settings.yaml", credentials=N
             if value is not None:
                 return str(value)
             else:
-                print(f"[config_data_loader] [!] ATENÇÃO: Placeholder '{placeholder_key}' não encontrado em credentials.yaml.")
+                logger.warning(f"Placeholder '{placeholder_key}' não encontrado em credentials.yaml.")
                 return f"ERRO_PLACEHOLDER_{placeholder_key}"
         settings_str_resolved = re.sub(r"\$\{(\w+)\}", resolve_placeholder, settings_str)
         settings = yaml.safe_load(settings_str_resolved)
         if not settings:
-            print(f"[config_data_loader] ERRO: Configurações em '{settings_path}' estão vazias.")
+            logger.error(f"Configurações em '{settings_path}' estão vazias.")
             return None
-        print(f"[config_data_loader] Configurações carregadas e processadas de '{settings_path}'.")
+        logger.info(f"Configurações carregadas e processadas de '{settings_path}'.")
         return settings
     except Exception as e:
-        print(f"[config_data_loader] ERRO ao carregar ou processar '{settings_path}': {e}")
+        logger.error(f"Erro ao carregar ou processar '{settings_path}': {e}")
         return None
 
 
@@ -58,12 +60,12 @@ def load_initial_prompts(filepath):
         with open(filepath, 'r', encoding='utf-8') as f:
             prompts = [line.strip() for line in f.readlines() if line.strip()]
         if not prompts:
-            print(f"[config_data_loader] Arquivo de prompts '{filepath}' está vazio.")
+            logger.warning(f"Arquivo de prompts '{filepath}' está vazio.")
             return []
-        print(f"[config_data_loader] {len(prompts)} prompts carregados de '{filepath}'.")
+        logger.info(f"{len(prompts)} prompts carregados de '{filepath}'.")
         return prompts
     except FileNotFoundError:
-        print(f"[config_data_loader] Arquivo de prompts '{filepath}' não encontrado.")
+        logger.error(f"Arquivo de prompts '{filepath}' não encontrado.")
         return []
 
 
@@ -72,24 +74,24 @@ def load_dataset(config):
     filepath = config.get("dataset_path")
 
     if not filepath or not os.path.exists(filepath):
-        print(f"[config_data_loader] ERRO: Arquivo de dataset '{filepath}' não encontrado.")
+        logger.error(f"Arquivo de dataset '{filepath}' não encontrado.")
         return None
 
     try:
         if task == 'imdb':
-            df = pd.read_csv(filepath)
-            print(f"[config_data_loader] Dataset IMDB carregado com {len(df)} registros.")
+            df = pd.read_csv(filepath) # type: ignore
+            logger.info(f"Dataset IMDB carregado com {len(df)} registros.")
             return df
         elif task == 'squad':
-            df = pd.read_csv(filepath)
-            print(f"[config_data_loader] Dataset SQuAD carregado com {len(df)} registros.")
+            df = pd.read_csv(filepath) # type: ignore
+            logger.info(f"Dataset SQuAD carregado com {len(df)} registros.")
             return df
         else:
-            print(f"[config_data_loader] ERRO: Tarefa '{task}' desconhecida para carregamento de dataset.")
+            logger.error(f"Tarefa '{task}' desconhecida para carregamento de dataset.")
             return None
 
     except Exception as e:
-        print(f"[config_data_loader] Erro ao carregar ou processar o dataset '{filepath}': {e}")
+        logger.error(f"Erro ao carregar ou processar o dataset '{filepath}': {e}")
         return None
 
 # Seção: Retomada de Execução
@@ -116,7 +118,7 @@ def load_population_for_resumption(generation_to_load, base_output_dir, is_multi
         file_path = os.path.join(base_output_dir, "generations_detail", f"population_sorted_gen_{generation_to_load}.csv")
 
     if not os.path.exists(file_path):
-        print(f"[config_data_loader] ERRO: Arquivo de população para retomada '{file_path}' não encontrado.")
+        logger.error(f"Arquivo de população para retomada '{file_path}' não encontrado.")
         return None, None
 
     try:
@@ -137,8 +139,8 @@ def load_population_for_resumption(generation_to_load, base_output_dir, is_multi
             
             individual["metrics"] = (individual["acc"], individual["f1"], individual["tokens"], "")
             loaded_population.append(individual)
-        print(f"[config_data_loader] População da Geração {generation_to_load} carregada com sucesso de '{file_path}'.")
+        logger.info(f"População da Geração {generation_to_load} carregada com sucesso de '{file_path}'.")
         return loaded_population, generation_to_load + 1
     except Exception as e:
-        print(f"[config_data_loader] Erro ao carregar população da Geração {generation_to_load} de '{file_path}': {e}")
+        logger.error(f"Erro ao carregar população da Geração {generation_to_load} de '{file_path}': {e}")
         return None, None

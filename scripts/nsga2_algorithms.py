@@ -1,4 +1,6 @@
 # Seção: Lógica NSGA-II
+import logging
+logger = logging.getLogger(__name__)
 
 def dominates(ind_a_objectives, ind_b_objectives):
     """

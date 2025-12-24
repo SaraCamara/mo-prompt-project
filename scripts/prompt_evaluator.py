@@ -130,11 +130,11 @@ def evaluate_prompt_squad(prompt_instruction, dataset, executor_config, strategy
                 f1_score_val = compute_f1(dp['correct_answer'], predicted_answer)
                 # Log detalhado para os primeiros exemplos
                 if index < 3:
-                    print(f"[prompt_evaluator] [SQuAD] Exemplo {index}: Q='{dp['question'][:100]}', GT='{dp['correct_answer'][:100]}', Pred='{predicted_answer[:100]}', EM={exact_match}, F1={f1_score_val}")
+                    logger.debug(f"[SQuAD] Exemplo {index}: Q='{dp['question'][:100]}', GT='{dp['correct_answer'][:100]}', Pred='{predicted_answer[:100]}', EM={exact_match}, F1={f1_score_val}")
 
                 ordered_results[index] = (predicted_answer, exact_match, f1_score_val, dp['context'], dp['question'], dp['correct_answer'])
             except Exception as exc:
-                print(f"[prompt_evaluator] Erro durante a avaliação de um exemplo SQuAD (índice {index}): {exc}")
+                logger.error(f"Erro durante a avaliação de um exemplo SQuAD (índice {index}): {exc}")
                 ordered_results[index] = ("erro_processamento_paralelo", 0, 0, dp['context'], dp['question'], dp['correct_answer'])
 
     # Coleta as métricas e escreve os logs após todas as chamadas de API serem concluídas
@@ -163,7 +163,7 @@ def evaluate_prompt_imdb(prompt_instruction, dataset, evaluator_config, strategy
         with open(log_path, "w", encoding="utf-8") as f:
             f.write("prompt_instruction,text,true_label,llm_prediction,llm_response\n")
 
-    print(f"[prompt_evaluator] [IMDB] Avaliando prompt_instruction: '{prompt_instruction}'")
+    logger.info(f"[IMDB] Avaliando prompt_instruction: '{prompt_instruction}'")
 
     MAX_WORKERS = 10 # Ajuste com base nos limites de taxa da API
     
@@ -188,10 +188,10 @@ def evaluate_prompt_imdb(prompt_instruction, dataset, evaluator_config, strategy
             try:
                 prediction, response_text = future.result()
                 if index < 3:
-                    print(f"[prompt_evaluator] [IMDB] Exemplo {index}: Text='{dp['text'][:100]}', GT={dp['label']}, Pred={prediction}, LLM_Resp='{response_text[:100]}'")
+                    logger.debug(f"[IMDB] Exemplo {index}: Text='{dp['text'][:100]}', GT={dp['label']}, Pred={prediction}, LLM_Resp='{response_text[:100]}'")
                 ordered_results[index] = (prediction, response_text, dp['text'], dp['label'])
             except Exception as exc:
-                print(f"[prompt_evaluator] Erro durante a avaliação de um exemplo IMDB (índice {index}): {exc}")
+                logger.error(f"Erro durante a avaliação de um exemplo IMDB (índice {index}): {exc}")
                 ordered_results[index] = (1 - dp['label'], "erro_processamento_paralelo", dp['text'], dp['label'])
 
     with open(log_path, "a", encoding="utf-8") as f:

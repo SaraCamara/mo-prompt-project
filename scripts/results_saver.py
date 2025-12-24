@@ -2,10 +2,12 @@ import os
 import pandas as pd
 import matplotlib.pyplot as plt
 import matplotlib
+import logging
 
 matplotlib.use('Agg') # Configura o backend do Matplotlib para 'Agg' para evitar problemas de thread com GUI
 
 # Seção: Persistência e Salvamento de Resultados
+logger = logging.getLogger(__name__)
 
 def save_generation_results(population, generation, config, output_dir):
     os.makedirs(output_dir, exist_ok=True)
@@ -23,7 +25,7 @@ def save_generation_results(population, generation, config, output_dir):
     df = pd.DataFrame(data)
     df = df.sort_values(by=["f1_score", "tokens"], ascending=[False, True])
     df.to_csv(path, index=False, encoding='utf-8')
-    print(f"[results_saver] Resultados detalhados da geração {generation} salvos em {path}")
+    logger.info(f"Resultados detalhados da geração {generation} salvos em {path}")
 
 def save_sorted_population(population, generation, output_dir):
     os.makedirs(output_dir, exist_ok=True)
@@ -39,11 +41,11 @@ def save_sorted_population(population, generation, output_dir):
     df = pd.DataFrame(data)
     df = df.sort_values(by=["f1_score", "tokens"], ascending=[False, True])
     df.to_csv(sorted_log_path, index=False, encoding='utf-8')
-    print(f"[results_saver] População ordenada da geração {generation} salva em {sorted_log_path}")
+    logger.info(f"População ordenada da geração {generation} salva em {sorted_log_path}")
 
 
 def save_final_results(population, config, output_csv_path): 
-    print("[results_saver] Salvando resultados finais.")
+    logger.info("Salvando resultados finais.")
     data = []
     for ind in population:
         prompt, metrics = ind.get("prompt"), ind.get("metrics")
@@ -84,4 +86,4 @@ def save_pareto_front_data(front_individuals, csv_path, plot_path):
     plt.grid(True, linestyle='--', alpha=0.6)
     plt.savefig(plot_path)
     plt.close()
-    print(f"[results_saver] Gráfico da fronteira de Pareto salvo em {plot_path}")
+    logger.info(f"Gráfico da fronteira de Pareto salvo em {plot_path}")

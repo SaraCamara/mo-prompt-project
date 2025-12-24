@@ -1,10 +1,12 @@
 import os
+import logging
 from scripts.prompt_evaluator import evaluate_prompt
 from scripts.selection_algorithms import roulette_wheel_selection, tournament_selection_multiobjective
 from scripts.evolutionary_operators import crossover_and_mutation_ga, mop_crossover_and_mutation_ga
 from scripts.nsga2_algorithms import fast_non_dominated_sort, compute_crowding_distance
 
 # Seção: Funções Auxiliares de Evolução (Gerenciamento de População)
+logger = logging.getLogger(__name__)
 
 def evaluate_population(prompts_to_evaluate, dataset, config, executor_config):
     evaluated_population = []
@@ -22,9 +24,9 @@ def evaluate_population(prompts_to_evaluate, dataset, config, executor_config):
         elif isinstance(p, str):
             prompt_list.append(p)
         else:
-            print(f"[population_manager] Aviso: Formato de prompt inesperado encontrado: {p}. Ignorando.")
+            logger.warning(f"Formato de prompt inesperado encontrado: {p}. Ignorando.")
 
-    print(f"[population_manager] Iniciando avaliação de {len(prompt_list)} prompts.")
+    logger.info(f"Iniciando avaliação de {len(prompt_list)} prompts.")
     for p_text in prompt_list:
         metrics = evaluate_prompt(p_text, dataset, executor_config, strategy_config, config, eval_log_dir)
         acc, f1, tokens, _ = metrics
@@ -52,12 +54,12 @@ def generate_unique_offspring(current_population, config, evolution_type="mono")
     max_attempts = population_size * 3
     attempts = 0
     
-    print(f"[population_manager] Gerando até {population_size} descendentes únicos ({evolution_type}-objetivo).")
+    logger.info(f"Gerando até {population_size} descendentes únicos ({evolution_type}-objetivo).")
 
     while len(offspring_prompts_dicts) < population_size and attempts < max_attempts:
         attempts += 1
         if len(current_population) < num_parents_for_crossover:
-            print(f"[population_manager] [Offspring {evolution_type.capitalize()}] População atual menor que {num_parents_for_crossover}, não é possível gerar offspring.")
+            logger.warning(f"[Offspring {evolution_type.capitalize()}] População atual menor que {num_parents_for_crossover}, não é possível gerar offspring.")
             break
         
         parent_pair = []
@@ -70,8 +72,8 @@ def generate_unique_offspring(current_population, config, evolution_type="mono")
             k_tournament_parents = config.get("k_tournament_parents", 2)
             parent_pair = tournament_selection_multiobjective(current_population, k_tournament_parents, num_parents_for_crossover)
             crossover_mutation_func = mop_crossover_and_mutation_ga
-        else:
-            print(f"[population_manager] [Offspring] Tipo de evolução desconhecido: {evolution_type}")
+        else: # type: ignore
+            logger.error(f"[Offspring] Tipo de evolução desconhecido: {evolution_type}")
             break
 
         if len(parent_pair) < num_parents_for_crossover:
@@ -86,7 +88,7 @@ def generate_unique_offspring(current_population, config, evolution_type="mono")
                 existing_prompts.add(new_prompt)
 
     if len(offspring_prompts_dicts) < population_size:
-        print(f"[population_manager] [!] Apenas {len(offspring_prompts_dicts)} filhos únicos foram gerados ({evolution_type}-objetivo).")
+        logger.warning(f"Apenas {len(offspring_prompts_dicts)} filhos únicos foram gerados ({evolution_type}-objetivo).")
     
     return [p["prompt"] for p in offspring_prompts_dicts] # Retorna uma lista de strings
 
