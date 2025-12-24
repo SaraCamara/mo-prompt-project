@@ -92,24 +92,24 @@ ipython_config.py
 #   However, in case of collaboration, if having platform-specific dependencies or dependencies
 #   having no cross-platform support, pipenv may install dependencies that don't work, or not
 #   install all needed dependencies.
-#Pipfile.lock
+Pipfile.lock
 
 # UV
 #   Similar to Pipfile.lock, it is generally recommended to include uv.lock in version control.
 #   This is especially recommended for binary packages to ensure reproducibility, and is more
 #   commonly ignored for libraries.
-#uv.lock
+uv.lock
 
 # poetry
 #   Similar to Pipfile.lock, it is generally recommended to include poetry.lock in version control.
 #   This is especially recommended for binary packages to ensure reproducibility, and is more
 #   commonly ignored for libraries.
 #   https://python-poetry.org/docs/basic-usage/#commit-your-poetrylock-file-to-version-control
-#poetry.lock
+poetry.lock
 
 # pdm
 #   Similar to Pipfile.lock, it is generally recommended to include pdm.lock in version control.
-#pdm.lock
+pdm.lock
 #   pdm stores project-wide configurations in .pdm.toml, but it is recommended to not include it
 #   in version control.
 #   https://pdm.fming.dev/latest/usage/project/#working-with-version-control
@@ -178,31 +178,14 @@ config/credentials.yaml
 # Resultados e logs
 *.csv
 *.png
-# logs/*
-logs_v0/*
-!logs/mop/generations/*.csv
-backup/
-
-# Notebooks Jupyter
+logs/*
+#!logs/mop/generations/*.csv
+backups/
 *.ipynb
-!results/artigo_analise_resultados.ipynb
+!Notebooks/artigo_analise_resultados.ipynb
 
 # Dados
 #data/imdb_pt_subset.csv
-
-# Notebooks Jupyter temporários
-*.ipynb_checkpoints
-
-# Cache de Python
-__pycache__/
-*.py[cod]
-*.so
-
-# Ambientes virtuais
-.venv/
-env/
-venv/
-
 # Arquivos do sistema
 .DS_Store
 Thumbs.db
