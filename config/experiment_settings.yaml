@@ -8,7 +8,7 @@ evolution_params:
   population_size: 10
   stagnation_limit: 3
   k_tournament_parents: 2
-  mutation_rate: 0.8
+  mutation_rate: 0.1
 
 ollama_server_url: http://0.0.0.0:11434/api/chat
 

@@ -44,7 +44,7 @@ def query_ollama(prompt, model_config):
         response = requests.post(
             url=chat_server_url,
             json={"model": model_name, "messages": [{"role": "user", "content": prompt}], "stream": False},
-            timeout=55
+            timeout=30
         )
         response.raise_for_status()
         data = response.json()
