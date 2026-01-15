@@ -1,5 +1,6 @@
 import os
 import logging
+from tqdm import tqdm
 from .prompt_evaluator import evaluate_prompt # type: ignore
 from .selection_algorithms import roulette_wheel_selection, tournament_selection_multiobjective # type: ignore
 from .evolutionary_operators import crossover_and_mutation_ga, mop_crossover_and_mutation_ga # type: ignore
@@ -26,8 +27,8 @@ def evaluate_population(prompts_to_evaluate, dataset, config, executor_config):
         else:
             logger.warning(f"Formato de prompt inesperado encontrado: {p}. Ignorando.")
 
-    logger.info(f"Iniciando avaliação de {len(prompt_list)} prompts.")
-    for p_text in prompt_list:
+    # Progress bar para avaliação de prompts
+    for p_text in tqdm(prompt_list, desc="Avaliando prompts", unit="prompt"):
         metrics = evaluate_prompt(p_text, dataset, executor_config, strategy_config, config, eval_log_dir)
         acc, f1, tokens, _ = metrics
         evaluated_population.append({"prompt": p_text, "acc": acc, "f1": f1, "tokens": tokens, "metrics": metrics})
@@ -38,14 +39,6 @@ def generate_unique_offspring(current_population, config, evolution_type="mono")
     """
     Gera uma nova população de descendentes únicos a partir da população atual,
     utilizando funções de seleção e crossover/mutação apropriadas para o tipo de evolução.
-
-    Args:
-        current_population (list): A população atual de indivíduos.
-        config (dict): Dicionário de configurações do experimento.
-        evolution_type (str): "mono" para mono-objetivo ou "multi" para multi-objetivo.
-
-    Returns:
-        list: Uma lista de strings, onde cada string é um prompt de um descendente único.
     """
     offspring_prompts_dicts = []
     existing_prompts = {ind['prompt'] for ind in current_population}

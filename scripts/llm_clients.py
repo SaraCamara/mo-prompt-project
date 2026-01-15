@@ -28,9 +28,12 @@ def query_maritalk(full_prompt, model_config):
         return "erro_api"
 
 
-def query_ollama(prompt, model_config):
+def query_ollama(prompt, model_config, max_retries=3):
     model_name = model_config.get("name")
     server_url = model_config.get("endpoint")
+    # Timeout base de 120s para acomodar fila de requisições paralelas
+    timeout = model_config.get("timeout", 120)
+    
     if not model_name or not server_url:
         logger.error(f"[Ollama] Nome do modelo ou URL do servidor não configurado.")
         return "erro_configuracao"
@@ -40,18 +43,29 @@ def query_ollama(prompt, model_config):
         chat_server_url = server_url.rstrip('/') + "/api/chat"
     else:
         chat_server_url = server_url
-    try:
-        response = requests.post(
-            url=chat_server_url,
-            json={"model": model_name, "messages": [{"role": "user", "content": prompt}], "stream": False},
-            timeout=30
-        )
-        response.raise_for_status()
-        data = response.json()
-        return data.get("message", {}).get("content", "").strip().lower()
-    except requests.exceptions.RequestException as e:
-        logger.error(f"Erro ao consultar modelo Ollama '{model_name}': {e}")
-        return "erro_api"
+    
+    import time
+    for attempt in range(max_retries):
+        try:
+            response = requests.post(
+                url=chat_server_url,
+                json={"model": model_name, "messages": [{"role": "user", "content": prompt}], "stream": False},
+                timeout=timeout
+            )
+            response.raise_for_status()
+            data = response.json()
+            return data.get("message", {}).get("content", "").strip().lower()
+        except requests.exceptions.Timeout:
+            wait_time = (attempt + 1) * 10  # 10s, 20s, 30s
+            logger.warning(f"[Ollama] Timeout na tentativa {attempt + 1}/{max_retries} para '{model_name}'. Aguardando {wait_time}s...")
+            if attempt < max_retries - 1:
+                time.sleep(wait_time)
+        except requests.exceptions.RequestException as e:
+            logger.error(f"Erro ao consultar modelo Ollama '{model_name}': {e}")
+            return "erro_api"
+    
+    logger.error(f"[Ollama] Todas as {max_retries} tentativas falharam para '{model_name}'")
+    return "erro_api_timeout"
 
 
 def _call_openai_api(messages, generator_config, temperature=0.8):

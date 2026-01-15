@@ -1,6 +1,7 @@
 import os
 import concurrent.futures
 import logging
+from tqdm import tqdm
 from .llm_clients import query_maritalk, query_ollama # type: ignore
 from .evaluation_metrics import extract_label, compute_exact, compute_f1, count_tokens, calculate_imdb_metrics, calculate_squad_metrics # type: ignore
 
@@ -94,8 +95,10 @@ def evaluate_prompt_squad(prompt_instruction, dataset, executor_config, strategy
     total_tokens = count_tokens(prompt_instruction)
 
     logger.info(f"[SQuAD] Avaliando prompt_instruction: '{prompt_instruction}'")
-    # Configure o número máximo de workers. Ajuste este valor com base nos limites de taxa da API
-    MAX_WORKERS = 10
+    # Workers ajustados ao OLLAMA_NUM_PARALLEL (padrão=4)
+    # Para APIs na nuvem: pode aumentar para 10-20
+    evaluator_type = executor_config.get("tipo", "").lower()
+    MAX_WORKERS = 4 if evaluator_type == "ollama" else 10
     
     executor_name_sanitized = executor_config["name"].replace(":", "_").replace("/", "_")
     strategy_name_sanitized = strategy_config["name"]
@@ -123,21 +126,21 @@ def evaluate_prompt_squad(prompt_instruction, dataset, executor_config, strategy
             for i, dp in enumerate(original_data_points)
         }
 
-        for future in concurrent.futures.as_completed(future_to_index):
-            index = future_to_index[future]
-            dp = original_data_points[index]
-            try:
-                predicted_answer = future.result()
-                exact_match = compute_exact(dp['correct_answer'], predicted_answer)
-                f1_score_val = compute_f1(dp['correct_answer'], predicted_answer)
-                # Log detalhado para os primeiros exemplos
-                if index < 3:
-                    logger.debug(f"[SQuAD] Exemplo {index}: Q='{dp['question'][:100]}', GT='{dp['correct_answer'][:100]}', Pred='{predicted_answer[:100]}', EM={exact_match}, F1={f1_score_val}")
-
-                ordered_results[index] = (predicted_answer, exact_match, f1_score_val, dp['context'], dp['question'], dp['correct_answer'])
-            except Exception as exc:
-                logger.error(f"Erro durante a avaliação de um exemplo SQuAD (índice {index}): {exc}")
-                ordered_results[index] = ("erro_processamento_paralelo", 0, 0, dp['context'], dp['question'], dp['correct_answer'])
+        # Progress bar para acompanhar avaliações
+        with tqdm(total=len(original_data_points), desc="  Avaliando samples", unit="sample", leave=False) as pbar:
+            for future in concurrent.futures.as_completed(future_to_index):
+                index = future_to_index[future]
+                dp = original_data_points[index]
+                try:
+                    predicted_answer = future.result()
+                    exact_match = compute_exact(dp['correct_answer'], predicted_answer)
+                    f1_score_val = compute_f1(dp['correct_answer'], predicted_answer)
+                    ordered_results[index] = (predicted_answer, exact_match, f1_score_val, dp['context'], dp['question'], dp['correct_answer'])
+                except Exception as exc:
+                    logger.error(f"Erro durante a avaliação de um exemplo SQuAD (índice {index}): {exc}")
+                    ordered_results[index] = ("erro_processamento_paralelo", 0, 0, dp['context'], dp['question'], dp['correct_answer'])
+                finally:
+                    pbar.update(1)
 
     # Coleta as métricas e escreve os logs após todas as chamadas de API serem concluídas
     with open(log_path, "a", encoding="utf-8") as f:
@@ -167,7 +170,9 @@ def evaluate_prompt_imdb(prompt_instruction, dataset, evaluator_config, strategy
 
     logger.info(f"[IMDB] Avaliando prompt_instruction: '{prompt_instruction}'")
 
-    MAX_WORKERS = 10 # Ajuste com base nos limites de taxa da API
+    # Workers ajustados ao OLLAMA_NUM_PARALLEL (padrão=4)
+    evaluator_type = evaluator_config.get("tipo", "").lower()
+    MAX_WORKERS = 4 if evaluator_type == "ollama" else 10
     
     original_data_points = []
     for index, row in dataset.iterrows():
@@ -184,17 +189,19 @@ def evaluate_prompt_imdb(prompt_instruction, dataset, evaluator_config, strategy
             for i, dp in enumerate(original_data_points)
         }
 
-        for future in concurrent.futures.as_completed(future_to_index):
-            index = future_to_index[future]
-            dp = original_data_points[index]
-            try:
-                prediction, response_text = future.result()
-                if index < 3:
-                    logger.debug(f"[IMDB] Exemplo {index}: Text='{dp['text'][:100]}', GT={dp['label']}, Pred={prediction}, LLM_Resp='{response_text[:100]}'")
-                ordered_results[index] = (prediction, response_text, dp['text'], dp['label'])
-            except Exception as exc:
-                logger.error(f"Erro durante a avaliação de um exemplo IMDB (índice {index}): {exc}")
-                ordered_results[index] = (1 - dp['label'], "erro_processamento_paralelo", dp['text'], dp['label'])
+        # Progress bar para acompanhar avaliações
+        with tqdm(total=len(original_data_points), desc="  Avaliando samples", unit="sample", leave=False) as pbar:
+            for future in concurrent.futures.as_completed(future_to_index):
+                index = future_to_index[future]
+                dp = original_data_points[index]
+                try:
+                    prediction, response_text = future.result()
+                    ordered_results[index] = (prediction, response_text, dp['text'], dp['label'])
+                except Exception as exc:
+                    logger.error(f"Erro durante a avaliação de um exemplo IMDB (índice {index}): {exc}")
+                    ordered_results[index] = (1 - dp['label'], "erro_processamento_paralelo", dp['text'], dp['label'])
+                finally:
+                    pbar.update(1)
 
     with open(log_path, "a", encoding="utf-8") as f:
         for prediction, response_text, text, label in ordered_results:

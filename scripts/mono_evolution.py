@@ -3,6 +3,7 @@ import os
 import pandas as pd
 import random
 import logging
+from tqdm import tqdm
 from .population_manager import evaluate_population, generate_unique_offspring # type: ignore
 from .results_saver import ( # type: ignore
     save_generation_results, save_final_results, save_sorted_population
@@ -38,50 +39,53 @@ def run_mono_evolution(config, dataset, initial_prompts, output_csv_path, start_
         save_sorted_population(population, 0, generation_log_dir)
 
     # Ciclo de Gerações (ajustado para retomar)
-    for generation in range(current_generation, config["max_generations"]):
-        current_generation_number = generation
-        logger.info(f"--- Geração {current_generation_number}---")
+    max_gens = config["max_generations"]
+    gen_range = range(current_generation, max_gens)
+    
+    with tqdm(gen_range, desc="Evolução", unit="gen", initial=current_generation, total=max_gens) as pbar:
+        for generation in pbar:
+            current_generation_number = generation
+            pbar.set_description(f"Geração {current_generation_number}")
 
-        try:
-            # Geração de Filhos usando a função genérica do utils
-            offspring_prompts_list_of_dicts = generate_unique_offspring(
-                population,
-                config,
-                evolution_type="mono"
-            )
+            try:
+                # Geração de Filhos usando a função genérica do utils
+                offspring_prompts_list_of_dicts = generate_unique_offspring(
+                    population,
+                    config,
+                    evolution_type="mono"
+                )
+                
+                if not offspring_prompts_list_of_dicts:
+                    logger.warning("Nenhum descendente único foi gerado.")
+                    continue
+
+                # Avaliação dos Filhos
+                evaluated_offspring = evaluate_population(
+                    offspring_prompts_list_of_dicts, dataset, config, evaluator_config
+                )
+                
+                # Seleção de Sobreviventes
+                combined_population = population + evaluated_offspring
+                combined_population.sort(
+                    key=lambda x: (x["metrics"][1], -x["metrics"][2] if len(x["metrics"]) >= 3 else float('inf')),
+                    reverse=True
+                )
+                
+                population = combined_population[:population_size]
+                
+                if population:
+                    best_f1 = population[0]['metrics'][1]
+                    pbar.set_postfix({"best_f1": f"{best_f1:.4f}", "pop": len(population)})
+                else:
+                    logger.warning("População ficou vazia após seleção.")
+
+                # Salvando Resultados da Geração
+                save_sorted_population(population, current_generation_number, generation_log_dir)
+                save_generation_results(population, current_generation_number, config, generation_log_dir) 
             
-            # offspring_prompts_list_of_dicts will be a list of strings here
-            if not offspring_prompts_list_of_dicts:
-                logger.warning("Nenhum descendente único foi gerado. Pulando para a próxima geração.")
-                continue
-
-            logger.info(f"{len(offspring_prompts_list_of_dicts)} descendentes gerados. Avaliando.")
-
-            # Avaliação dos Filhos
-            evaluated_offspring = evaluate_population(offspring_prompts_list_of_dicts, dataset, config, evaluator_config)
-            
-            # Seleção de Sobreviventes
-            combined_population = population + evaluated_offspring
-            # F1_Score
-            combined_population.sort(key=lambda x: (x["metrics"][1], -x["metrics"][2] if len(x["metrics"]) >= 3 else float('inf')), reverse=True)
-            
-            population = combined_population[:population_size]
-            
-            if population:
-                logger.info(f"População da próxima geração selecionada (Tamanho: {len(population)}). Melhor f1_score: {population[0]['metrics'][1]:.4f}")
-            else:
-                logger.warning("População ficou vazia após seleção.")
-
-
-            # Salvando Resultados da Geração
-            save_sorted_population(population, current_generation_number, generation_log_dir)
-            save_generation_results(population, current_generation_number, config, generation_log_dir) 
-        
-        except Exception as e:
-            logger.error(f"Erro na geração {current_generation_number}: {e}", exc_info=True)
-            import traceback
-            traceback.print_exc()
-            continue 
+            except Exception as e:
+                logger.error(f"Erro na geração {current_generation_number}: {e}", exc_info=True)
+                continue 
 
     # Fim do Ciclo Evolutivo
     logger.info("Evolução mono-objetivo concluída.")

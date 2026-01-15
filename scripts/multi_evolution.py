@@ -2,6 +2,7 @@
 import os
 import random 
 import logging
+from tqdm import tqdm
 from .population_manager import evaluate_population, generate_unique_offspring, select_survivors_nsgaii # type: ignore
 from .nsga2_algorithms import compute_crowding_distance, fast_non_dominated_sort # type: ignore
 from .results_saver import save_pareto_front_data # type: ignore
@@ -57,51 +58,49 @@ def run_multi_evolution(config, dataset, initial_prompts_text, output_csv_path, 
     stagnation_counter = 0
     last_front_hash = None
     stagnation_limit = config.get("evolution_params", {}).get("stagnation_limit", 3)
+    max_gens = config["evolution_params"]["max_generations"]
+    gen_range = range(current_generation, max_gens)
 
-    for generation_num in range(current_generation, config["evolution_params"]["max_generations"]):
-        current_gen_display = generation_num # Ajustado para corresponder ao número da geração
-        logger.info(f"--- Geração {current_gen_display}---")
+    with tqdm(gen_range, desc="Evolução MOP", unit="gen", initial=current_generation, total=max_gens) as pbar:
+        for generation_num in pbar:
+            pbar.set_description(f"Geração {generation_num}")
 
-        offspring_prompts = generate_unique_offspring(current_population, config, evolution_type="multi")
-        logger.info(f"Offspring gerados ({len(offspring_prompts)}):")
-        for i, p in enumerate(offspring_prompts[:5]): # Loga os primeiros 5 offsprings
-            logger.info(f"  {i+1}) '{p}'")
-        if not offspring_prompts:
-            logger.warning("Nenhum filho único foi gerado nesta geração.")
-        
-        evaluated_offspring = evaluate_population(offspring_prompts, dataset, config, executor_config)
-        logger.info("Scores dos offspring avaliados:")
-        for i, ind in enumerate(evaluated_offspring[:5]): # Loga os scores dos primeiros 5 offsprings avaliados
-            logger.info(f"  - Prompt: \"{ind.get('prompt', 'N/A')[:50]}...\" | F1: {ind.get('f1', 0.0):.4f} | Acc: {ind.get('acc', 0.0):.4f} | Tokens: {ind.get('tokens', 0)}")
-        
-        current_population = select_survivors_nsgaii(current_population, evaluated_offspring, population_size)
-        logger.info(f"Nova população selecionada. Tamanho: {len(current_population)}")
-
-        current_pareto_front = [ind for ind in current_population if ind.get('rank') == 0]
-        if current_pareto_front:
-            save_pareto_front_data(
-                current_pareto_front, 
-                os.path.join(per_generation_pareto_log_dir, f"pareto_gen_{current_gen_display}.csv"),
-                os.path.join(per_generation_pareto_log_dir, f"pareto_gen_{current_gen_display}.png")
-            )
+            offspring_prompts = generate_unique_offspring(current_population, config, evolution_type="multi")
+            if not offspring_prompts:
+                logger.warning("Nenhum filho único foi gerado nesta geração.")
+                continue
             
-            front_prompts_tuple = tuple(sorted([ind['prompt'] for ind in current_pareto_front]))
-            current_front_hash = hash(front_prompts_tuple)
+            evaluated_offspring = evaluate_population(offspring_prompts, dataset, config, executor_config)
+            
+            current_population = select_survivors_nsgaii(current_population, evaluated_offspring, population_size)
 
-            if current_front_hash == last_front_hash:
-                stagnation_counter += 1
-                logger.warning(f"Fronteira de Pareto não mudou. Estagnação: {stagnation_counter}/{stagnation_limit}")
+            current_pareto_front = [ind for ind in current_population if ind.get('rank') == 0]
+            if current_pareto_front:
+                # Atualiza barra de progresso com métricas
+                best_f1 = max(ind.get('f1', 0) for ind in current_pareto_front)
+                pbar.set_postfix({"pareto": len(current_pareto_front), "best_f1": f"{best_f1:.3f}"})
+                
+                save_pareto_front_data(
+                    current_pareto_front, 
+                    os.path.join(per_generation_pareto_log_dir, f"pareto_gen_{generation_num}.csv"),
+                    os.path.join(per_generation_pareto_log_dir, f"pareto_gen_{generation_num}.png")
+                )
+                
+                front_prompts_tuple = tuple(sorted([ind['prompt'] for ind in current_pareto_front]))
+                current_front_hash = hash(front_prompts_tuple)
+
+                if current_front_hash == last_front_hash:
+                    stagnation_counter += 1
+                else:
+                    stagnation_counter = 0
+                
+                last_front_hash = current_front_hash
+
+                if stagnation_counter >= stagnation_limit:
+                    logger.info(f"Estagnação por {stagnation_limit} gerações. Parando.")
+                    break
             else:
-                stagnation_counter = 0
-                logger.info("Fronteira de Pareto evoluiu.")
-            
-            last_front_hash = current_front_hash
-
-            if stagnation_counter >= stagnation_limit:
-                logger.info(f"EVOLUÇÃO ESTAGNOU por {stagnation_limit} gerações. Interrompendo.")
-                break
-        else:
-            logger.warning(f"Fronteira de Pareto da geração {current_gen_display} vazia.")
+                logger.warning(f"Fronteira de Pareto da geração {generation_num} vazia.")
 
     # Fim do Ciclo Evolutivo
     logger.info("Evolução multiobjetivo concluída.")
