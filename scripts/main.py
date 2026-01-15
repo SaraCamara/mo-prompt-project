@@ -1,161 +1,175 @@
 # main.py
-import subprocess
-import sys
+"""Ponto de entrada principal para o mo-prompt-project."""
 import os
-import logging
 import re
-import yaml
+import sys
+import logging
+
 from .mono_evolution import run_mono_evolution
 from .multi_evolution import run_multi_evolution
-from .utils import install_requirements, get_validated_numerical_input
-from .config_data_loader import load_credentials_from_yaml, load_settings, load_dataset, load_initial_prompts, load_population_for_resumption
+from .cli_interface import select_from_menu, confirm_action, print_header, print_config_summary
+from .config_data_loader import (
+    load_credentials_from_yaml, load_settings, load_dataset,
+    load_initial_prompts, load_population_for_resumption
+)
 from .logger_config import setup_logging
 
-if __name__ == "__main__":
-    setup_logging() # Configura o sistema de logging
-    logger = logging.getLogger(__name__)
 
-    install_requirements()
-    credentials = load_credentials_from_yaml("config/credentials.yaml")
-    if not credentials:
-        logger.critical("ERRO FATAL: Falha ao carregar 'credentials.yaml'. Encerrando.")
-        sys.exit(1)
-
-    config = load_settings("config/experiment_settings.yaml", credentials)
-    if not config:
-        logger.critical("ERRO FATAL: Falha ao carregar 'experiment_settings.yaml'. Encerrando.")
-        sys.exit(1)
-    # Seleção de dados para tarefa (IMDB/SQuAD)
-    logger.info("\n\n[>] Selecione a tarefa a ser executada:\n  0) Análise de Sentimentos - IMDB-PT \n  1) Perguntas e Respostas - SQuAD-PT")    
-    task_choice = get_validated_numerical_input("Digite o número da opção desejada (0 ou 1): ", 2)
-    is_squad = (task_choice == 1)
-    task_name = "squad" if is_squad else "imdb"
+def setup_experiment_config(config: dict) -> dict:
+    """Configura o experimento através de seleções interativas."""
+    
+    # 1. Seleção de Tarefa
+    tasks = [
+        {"name": "Análise de Sentimentos - IMDB-PT", "key": "imdb"},
+        {"name": "Perguntas e Respostas - SQuAD-PT", "key": "squad"}
+    ]
+    _, task = select_from_menu("Selecione a Tarefa", tasks)
+    task_name = task["key"]
     config["task"] = task_name
-    print(f"[main] Tarefa selecionada: {task_name.upper()}")
-
-    # Carrega as configurações específicas da tarefa
+    
+    # Carrega configurações específicas da tarefa
     config["dataset_path"] = config[f"dataset_path_{task_name}"]
     config["generator"] = config[f"generator_{task_name}"]
     config["strategies"] = config[f"strategies_{task_name}"]
     
+    # 2. Seleção de Modo de Otimização
+    modes = [
+        {"name": "Mono-objetivo (maximiza F1)", "key": "mono"},
+        {"name": "Multiobjetivo (F1 vs Tokens)", "key": "multi"}
+    ]
+    _, mode = select_from_menu("Modo de Otimização", modes)
+    is_multiobjective = mode["key"] == "multi"
+    config["objective"] = "multiobjetivo" if is_multiobjective else "mono-objetivo"
     
-    # Carregamento do Dataset
-    df_sample = load_dataset(config)
-    if df_sample is None:
-        logger.critical("ERRO FATAL: Falha ao carregar o dataset. Encerrando.")
-        sys.exit(1)
+    # 3. Seleção de Avaliador
+    evaluators = config.get("evaluators", [])
+    if not evaluators:
+        raise ValueError("Nenhum avaliador definido em experiment_settings.yaml")
+    
+    _, evaluator = select_from_menu("Modelo Avaliador", evaluators)
+    config["evaluators"] = [evaluator]
+    
+    # 4. Seleção de Estratégia
+    strategies = config.get("strategies", [])
+    if not strategies:
+        raise ValueError("Nenhuma estratégia definida para a tarefa")
+    
+    _, strategy = select_from_menu("Estratégia de Prompt", strategies)
+    config["strategies"] = [strategy]
+    
+    # 5. Configurar diretórios de saída
+    evaluator_name = evaluator.get("name", "unknown")
+    model_name = re.split(r'[:/_-]', evaluator_name)[0]
+    strategy_name = strategy["name"]
+    objective_dir = "mop" if is_multiobjective else "evo"
+    
+    base_output_dir = os.path.join("logs", task_name, objective_dir, model_name, strategy_name)
+    os.makedirs(base_output_dir, exist_ok=True)
+    config["base_output_dir"] = base_output_dir
+    
+    return config
 
-    # Carregamento da População Inicial
-    logger.info("\n\nCarregamento da população inicial")
-    prompts_path = f"data/initial_prompts_{task_name}.txt"
+
+def handle_resumption(base_output_dir: str, is_multiobjective: bool) -> tuple:
+    """Gerencia a lógica de retomar uma execução anterior."""
+    
+    if not confirm_action("\nDeseja retomar uma execução anterior?"):
+        return 0, None
+    
+    while True:
+        try:
+            gen = int(input("De qual geração retomar? "))
+            if gen < 0:
+                print("⚠ Número de geração deve ser >= 0")
+                continue
+                
+            population, next_gen = load_population_for_resumption(
+                gen, base_output_dir, is_multiobjective
+            )
+            
+            if population is not None:
+                print(f"✓ População carregada. Continuando da geração {next_gen}")
+                return next_gen, population
+            
+            print(f"⚠ Não foi possível carregar geração {gen}")
+            if not confirm_action("Tentar outra geração?"):
+                return 0, None
+                
+        except ValueError:
+            print("⚠ Digite um número válido")
+
+
+def main():
+    """Função principal."""
+    setup_logging()
+    logger = logging.getLogger(__name__)
+    
+    print_header("MO-PROMPT-PROJECT", char="█", width=60)
+    print("  Otimização Evolutiva de Prompts para NLP")
+    print("  " + "─" * 40)
+    
+    # Carrega configurações
+    credentials = load_credentials_from_yaml("config/credentials.yaml")
+    if not credentials:
+        logger.critical("Falha ao carregar credentials.yaml")
+        sys.exit(1)
+    
+    config = load_settings("config/experiment_settings.yaml", credentials)
+    if not config:
+        logger.critical("Falha ao carregar experiment_settings.yaml")
+        sys.exit(1)
+    
+    # Configuração interativa
+    try:
+        config = setup_experiment_config(config)
+    except ValueError as e:
+        logger.critical(str(e))
+        sys.exit(1)
+    
+    # Carrega dataset
+    dataset = load_dataset(config)
+    if dataset is None:
+        logger.critical("Falha ao carregar dataset")
+        sys.exit(1)
+    
+    # Carrega prompts iniciais
+    prompts_path = f"data/initial_prompts_{config['task']}.txt"
     initial_prompts = load_initial_prompts(prompts_path)
     if not initial_prompts:
-        logger.critical(f"ERRO FATAL: Falha ao carregar prompts iniciais de '{prompts_path}'. Encerrando.")
+        logger.critical(f"Falha ao carregar prompts de {prompts_path}")
         sys.exit(1)
-
-    # Seleção de Modo (Mono/Multi)
-    logger.info("\n\n[>] Selecione estratégia de otimização:\n  0) Mono-objetivo\n  1) Multiobjetivo")
-    optimization_type_choice = get_validated_numerical_input("Digite o número da opção desejada (0 ou 1): ", 2)
-    is_multiobjective = (optimization_type_choice == 1)
-    config["objective"] = "multiobjetivo" if is_multiobjective else "mono-objetivo"
-    logger.info(f"Tipo de otimização selecionado: [{config['objective'].capitalize()}]")
-
-
-    # Seleção de Avaliador
-    logger.info("\n\n[>] Selecione do modelo avaliador:")
-    available_evaluators = config.get("evaluators", [])
-    if not available_evaluators:
-        logger.critical("Nenhum avaliador definido em 'experiment_settings.yaml'. Encerrando.")
-        sys.exit(1)
-
-    for i, evaluator_config in enumerate(available_evaluators):
-        logger.info(f"  {i}) {evaluator_config.get('name', 'Avaliador Desconhecido')}")
-
-    evaluator_choice_idx = get_validated_numerical_input("Digite o número da opção desejada: ", len(available_evaluators))
-    selected_evaluator_config = available_evaluators[evaluator_choice_idx]
-    evaluator_name = selected_evaluator_config.get("name", "unknown_model")
-    logger.info(f"Avaliador selecionado: {evaluator_name}")
-    config["evaluators"] = [selected_evaluator_config]
-
-    # Extrai o nome base do modelo para usar no caminho do diretório
-    parts = re.split(r'[:/_-]', evaluator_name)
-    output_model_name = parts[0]
-
-
-    # Seleção de Estratégia
-    logger.info("\n\n[>] Selecione da estratégia de prompt:")
-    available_strategies = config.get("strategies", [])
-    if not available_strategies:
-        logger.critical("Nenhuma estratégia definida em 'experiment_settings.yaml'. Encerrando.")
-        sys.exit(1)
-
-    for i, strategy_config in enumerate(available_strategies):
-        logger.info(f"  {i}) {strategy_config.get('name', 'Estratégia Desconhecida')}")
-
-    strategy_choice_idx = get_validated_numerical_input("Digite o número da opção desejada: ", len(available_strategies))
-    selected_strategy_config = available_strategies[strategy_choice_idx]
-    strategy_name = selected_strategy_config["name"]
-    logger.info(f"Estratégia de prompt selecionada: {strategy_name}")
-    config["strategies"] = [selected_strategy_config]
-
-
-    # Configuração de Caminhos de Saída 
-    logger.info("\n\nConfigurando diretório de saída para o experimento...")
-    objective_path_name = "mop" if is_multiobjective else "evo"
-
-    base_output_dir = os.path.join("logs", task_name, objective_path_name, output_model_name, strategy_name)
-    logger.info(f"Todos os resultados e logs para esta execução serão salvos em: '{base_output_dir}'")
-    os.makedirs(base_output_dir, exist_ok=True)
-
-    config["base_output_dir"] = base_output_dir
-
-    output_csv = os.path.join(base_output_dir, "final_results.csv")
-    output_plot = os.path.join(base_output_dir, "final_pareto_front.png") if is_multiobjective else ""
-
-    logger.info(f"Caminhos configurados:\n - CSV: {output_csv}")
+    
+    # Exibe resumo
+    print_config_summary(config)
+    
+    # Verifica retomada
+    is_multi = config["objective"] == "multiobjetivo"
+    start_gen, loaded_pop = handle_resumption(config["base_output_dir"], is_multi)
+    
+    # Configura caminhos de saída
+    output_csv = os.path.join(config["base_output_dir"], "final_results.csv")
+    output_plot = os.path.join(config["base_output_dir"], "final_pareto_front.png") if is_multi else ""
+    
+    # Executa evolução
+    print_header("Iniciando Evolução", char="─")
+    
+    if is_multi:
+        run_multi_evolution(
+            config, dataset, initial_prompts, output_csv, output_plot,
+            start_generation=start_gen, initial_population=loaded_pop
+        )
+    else:
+        run_mono_evolution(
+            config, dataset, initial_prompts, output_csv,
+            start_generation=start_gen, initial_population=loaded_pop
+        )
+    
+    print_header("Execução Finalizada", char="█")
+    print(f"  Resultados salvos em: {output_csv}")
     if output_plot:
-        logger.info(f" - Plot: {output_plot}")
-        
-    # Lógica para iniciar ou retomar
-    logger.info("\n\n[>] Deseja retomar uma execução anterior?")
-    logger.info("  0) Iniciar nova execução")
-    logger.info("  1) Retomar de uma geração específica")
-    resume_choice = get_validated_numerical_input("Digite o número da opção desejada (0 ou 1): ", 2)
+        print(f"  Gráfico Pareto: {output_plot}")
+    print()
 
-    start_generation = 0
-    loaded_population = None
 
-    if resume_choice == 1:
-        while True:
-            try:
-                resume_gen_input = input("De qual geração você deseja retomar? (Ex: 5): ")
-                resume_from_generation = int(resume_gen_input)
-                if resume_from_generation >= 0:
-                    loaded_population, next_gen_num = load_population_for_resumption(resume_from_generation, base_output_dir, is_multiobjective)
-                    if loaded_population is not None:
-                        start_generation = next_gen_num
-                        logger.info(f"Retomando da Geração {resume_from_generation}. Próxima geração será {start_generation}.")
-                        break
-                    else:
-                        logger.warning(f"Não foi possível carregar a população da Geração {resume_from_generation}. Por favor, verifique o diretório '{base_output_dir}'.")
-                        logger.info("Deseja tentar outra geração ou iniciar uma nova execução? (s/n para tentar outra, qualquer outra tecla para nova execução)")
-                        retry_input = input().lower()
-                        if retry_input != 's':
-                            logger.info("Iniciando nova execução.")
-                            break 
-            except ValueError:
-                logger.warning("Entrada inválida. Por favor, insira um número inteiro.")
-    else:
-        logger.info("Iniciando nova execução.")
-
-    # Execução do Algoritmo
-    logger.info("\n\n[>] Iniciando execução do algoritmo evolutivo.\n")
-
-    if is_multiobjective:
-        run_multi_evolution(config, df_sample, initial_prompts, output_csv, output_plot,
-                            start_generation=start_generation, initial_population=loaded_population)
-    else:
-        run_mono_evolution(config, df_sample, initial_prompts, output_csv,
-                            start_generation=start_generation, initial_population=loaded_population)
-
-    logger.info(f"\nExecução finalizada. Resultados disponíveis em:\n - {output_csv}\n")
+if __name__ == "__main__":
+    main()
