@@ -1,7 +1,6 @@
 # main.py
 """Ponto de entrada principal para o mo-prompt-project."""
 import os
-import re
 import sys
 import logging
 
@@ -13,6 +12,7 @@ from .config_data_loader import (
     load_initial_prompts, load_population_for_resumption
 )
 from .logger_config import setup_logging
+from .execution_tracker import detect_resumable_run
 
 
 def setup_experiment_config(config: dict) -> dict:
@@ -58,8 +58,7 @@ def setup_experiment_config(config: dict) -> dict:
     config["strategies"] = [strategy]
     
     # 5. Configurar diretórios de saída
-    evaluator_name = evaluator.get("name", "unknown")
-    model_name = re.split(r'[:/_-]', evaluator_name)[0]
+    model_name = evaluator.get("name", "unknown")
     strategy_name = strategy["name"]
     objective_dir = "mop" if is_multiobjective else "evo"
     
@@ -73,8 +72,43 @@ def setup_experiment_config(config: dict) -> dict:
 def handle_resumption(base_output_dir: str, is_multiobjective: bool) -> tuple:
     """Gerencia a lógica de retomar uma execução anterior."""
     
-    if not confirm_action("\nDeseja retomar uma execução anterior?"):
-        return 0, None
+    # Tenta detectar automaticamente um estado retomável
+    resumable_state = detect_resumable_run(base_output_dir)
+    
+    if resumable_state:
+        last_gen = resumable_state["last_completed_generation"]
+        next_gen = resumable_state["next_generation"]
+        accumulated_time = resumable_state["accumulated_time"]
+        stop_reason = resumable_state.get("stop_reason", "unknown")
+        
+        hours, remainder = divmod(accumulated_time, 3600)
+        minutes, seconds = divmod(remainder, 60)
+        time_str = f"{int(hours)}h {int(minutes)}m {int(seconds)}s"
+        
+        print("\n" + "="*60)
+        print("🔄 EXECUÇÃO ANTERIOR DETECTADA")
+        print("="*60)
+        print(f"  Última geração completada: {last_gen}")
+        print(f"  Tempo acumulado: {time_str}")
+        print(f"  Razão da parada: {stop_reason}")
+        print(f"  Próxima geração: {next_gen}")
+        print("="*60)
+        
+        if confirm_action("\nDeseja retomar desta execução?"):
+            population, _ = load_population_for_resumption(
+                last_gen, base_output_dir, is_multiobjective
+            )
+            
+            if population is not None:
+                print(f"✓ População carregada. Continuando da geração {next_gen}")
+                print(f"✓ Estado restaurado: stagnation_counter={resumable_state.get('stagnation_counter', 0)}")
+                return next_gen, population, resumable_state
+            else:
+                print("⚠ Falha ao carregar população")
+    
+    # Fallback: pergunta manualmente
+    if not resumable_state or not confirm_action("\nDeseja retomar uma execução anterior (entrada manual)?"):
+        return 0, None, None
     
     while True:
         try:
@@ -89,11 +123,12 @@ def handle_resumption(base_output_dir: str, is_multiobjective: bool) -> tuple:
             
             if population is not None:
                 print(f"✓ População carregada. Continuando da geração {next_gen}")
-                return next_gen, population
+                # Sem estado carregado em modo manual
+                return next_gen, population, None
             
             print(f"⚠ Não foi possível carregar geração {gen}")
             if not confirm_action("Tentar outra geração?"):
-                return 0, None
+                return 0, None, None
                 
         except ValueError:
             print("⚠ Digite um número válido")
@@ -144,7 +179,7 @@ def main():
     
     # Verifica retomada
     is_multi = config["objective"] == "multiobjetivo"
-    start_gen, loaded_pop = handle_resumption(config["base_output_dir"], is_multi)
+    start_gen, loaded_pop, loaded_state = handle_resumption(config["base_output_dir"], is_multi)
     
     # Configura caminhos de saída
     output_csv = os.path.join(config["base_output_dir"], "final_results.csv")
@@ -156,12 +191,14 @@ def main():
     if is_multi:
         run_multi_evolution(
             config, dataset, initial_prompts, output_csv, output_plot,
-            start_generation=start_gen, initial_population=loaded_pop
+            start_generation=start_gen, initial_population=loaded_pop,
+            loaded_state=loaded_state
         )
     else:
         run_mono_evolution(
             config, dataset, initial_prompts, output_csv,
-            start_generation=start_gen, initial_population=loaded_pop
+            start_generation=start_gen, initial_population=loaded_pop,
+            loaded_state=loaded_state
         )
     
     print_header("Execução Finalizada", char="█")
