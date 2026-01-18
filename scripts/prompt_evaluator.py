@@ -8,6 +8,49 @@ from .evaluation_metrics import extract_label, compute_exact, compute_f1, count_
 # Seção: Avaliação de Prompts
 logger = logging.getLogger(__name__)
 
+def get_safe_max_workers(evaluator_config: dict, experiment_settings: dict) -> int:
+    """
+    Determine safe max_workers value based on evaluator type and configuration.
+    
+    Returns:
+        int: Safe number of concurrent workers
+    """
+    evaluator_type = evaluator_config.get("tipo", "").lower()
+    performance_config = experiment_settings.get("performance", {})
+    
+    # Get configured values with fallbacks
+    if evaluator_type == "ollama":
+        max_workers = performance_config.get("max_workers_ollama", 4)
+        warn_threshold = performance_config.get("warn_above_workers", 8)
+    else:
+        max_workers = performance_config.get("max_workers_cloud", 10)
+        warn_threshold = 15
+    
+    # Hard limit safety check
+    hard_limit = performance_config.get("max_workers_limit", 20)
+    if max_workers > hard_limit:
+        logger.warning(
+            f"Configured max_workers ({max_workers}) exceeds hard limit ({hard_limit}). "
+            f"Capping at {hard_limit}."
+        )
+        max_workers = hard_limit
+    
+    # Warn for potentially problematic configurations
+    if evaluator_type == "ollama" and max_workers > warn_threshold:
+        logger.warning(
+            f"High max_workers ({max_workers}) configured for Ollama. "
+            f"This may cause memory issues or timeouts. "
+            f"Recommended: {warn_threshold} or lower for typical 7B models on 16GB VRAM. "
+            f"Ensure OLLAMA_NUM_PARALLEL is set to at least {max_workers} on the server."
+        )
+    
+    logger.debug(
+        f"Using max_workers={max_workers} for evaluator type '{evaluator_type}' "
+        f"(model: {evaluator_config.get('name', 'unknown')})"
+    )
+    
+    return max_workers
+
 def evaluate_prompt_single(prompt_instruction: str, text: str, label: int,
                         evaluator_config: dict, strategy_config: dict,
                         experiment_settings: dict) -> tuple[int, str]:
@@ -95,10 +138,9 @@ def evaluate_prompt_squad(prompt_instruction, dataset, executor_config, strategy
     total_tokens = count_tokens(prompt_instruction)
 
     logger.info(f"[SQuAD] Avaliando prompt_instruction: '{prompt_instruction}'")
-    # Workers ajustados ao OLLAMA_NUM_PARALLEL (padrão=4)
-    # Para APIs na nuvem: pode aumentar para 10-20
-    evaluator_type = executor_config.get("tipo", "").lower()
-    MAX_WORKERS = 4 if evaluator_type == "ollama" else 10
+    
+    # Get safe max_workers from configuration with validation
+    MAX_WORKERS = get_safe_max_workers(executor_config, experiment_settings)
     
     executor_name_sanitized = executor_config["name"].replace(":", "_").replace("/", "_")
     strategy_name_sanitized = strategy_config["name"]
@@ -170,9 +212,8 @@ def evaluate_prompt_imdb(prompt_instruction, dataset, evaluator_config, strategy
 
     logger.info(f"[IMDB] Avaliando prompt_instruction: '{prompt_instruction}'")
 
-    # Workers ajustados ao OLLAMA_NUM_PARALLEL (padrão=4)
-    evaluator_type = evaluator_config.get("tipo", "").lower()
-    MAX_WORKERS = 4 if evaluator_type == "ollama" else 10
+    # Get safe max_workers from configuration with validation
+    MAX_WORKERS = get_safe_max_workers(evaluator_config, experiment_settings)
     
     original_data_points = []
     for index, row in dataset.iterrows():

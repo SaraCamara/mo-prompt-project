@@ -7,7 +7,7 @@ import logging
 logger = logging.getLogger(__name__)
 
 def query_maritalk(full_prompt, model_config):
-    model_name = model_config.get("name", "sabiazinho-3")
+    model_name = model_config.get("model", "sabiazinho-3")
     api_key = model_config.get("chave_api")
     endpoint_url = model_config.get("endpoint")
     if not api_key or not endpoint_url:
@@ -29,7 +29,13 @@ def query_maritalk(full_prompt, model_config):
 
 
 def query_ollama(prompt, model_config, max_retries=3):
-    model_name = model_config.get("name")
+    """Consulta modelo Ollama local com retry e timeout adequado.
+    
+    O Ollama processa requisições sequencialmente, então quando há
+    múltiplas requisições paralelas, elas ficam enfileiradas.
+    Timeout aumentado para acomodar a fila + tempo de inferência.
+    """
+    model_name = model_config.get("model")
     server_url = model_config.get("endpoint")
     # Timeout base de 120s para acomodar fila de requisições paralelas
     timeout = model_config.get("timeout", 120)
@@ -71,7 +77,7 @@ def query_ollama(prompt, model_config, max_retries=3):
 def _call_openai_api(messages, generator_config, temperature=0.8):
     local_api_key = generator_config.get("chave_api")
     local_api_base = generator_config.get("endpoint")
-    model_name = generator_config.get("name")
+    model_name = generator_config.get("model", generator_config.get("name"))
     if not local_api_key:
         logger.critical("ERRO CRÍTICO: Chave API não fornecida.")
         return "erro_configuracao_gerador_sem_chave_api"
