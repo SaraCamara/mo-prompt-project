@@ -39,6 +39,14 @@ def generate_unique_offspring(current_population, config, evolution_type="mono")
     """
     Gera uma nova população de descendentes únicos a partir da população atual,
     utilizando funções de seleção e crossover/mutação apropriadas para o tipo de evolução.
+
+    Args:
+        current_population (list): A população atual de indivíduos.
+        config (dict): Dicionário de configurações do experimento.
+        evolution_type (str): "mono" para mono-objetivo ou "multi" para multi-objetivo.
+
+    Returns:
+        list: Uma lista de strings, onde cada string é um prompt de um descendente único.
     """
     offspring_prompts_dicts = []
     existing_prompts = {ind['prompt'] for ind in current_population}

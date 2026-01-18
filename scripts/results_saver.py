@@ -87,3 +87,120 @@ def save_pareto_front_data(front_individuals, csv_path, plot_path):
     plt.savefig(plot_path)
     plt.close()
     logger.info(f"Gráfico da fronteira de Pareto salvo em {plot_path}")
+
+
+def save_evolution_summary_markdown(config, metrics, output_dir):
+    """Gera um resumo em markdown da execução evolutiva.
+    
+    Args:
+        config: Dicionário de configuração do experimento
+        metrics: Dicionário com métricas da execução
+        output_dir: Diretório base de saída
+    """
+    import datetime
+    
+    summary_path = os.path.join(output_dir, "evolution_summary.md")
+    
+    # Extrai informações
+    task = config.get("task", "unknown")
+    objective = config.get("objective", "unknown")
+    evaluator = config.get("evaluators", [{}])[0]
+    model_name = evaluator.get("name", "unknown")
+    model_id = evaluator.get("model", "unknown")
+    strategy = config.get("strategies", [{}])[0]
+    strategy_name = strategy.get("name", "unknown")
+    
+    evolution_params = config.get("evolution_params", {})
+    
+    # Métricas de tempo
+    start_time = metrics.get("start_time", "N/A")
+    end_time = metrics.get("end_time", "N/A")
+    total_duration = metrics.get("total_duration_seconds", 0)
+    
+    # Formato de tempo legível
+    hours, remainder = divmod(total_duration, 3600)
+    minutes, seconds = divmod(remainder, 60)
+    duration_str = f"{int(hours)}h {int(minutes)}m {int(seconds)}s"
+    
+    # Métricas finais
+    generations_completed = metrics.get("generations_completed", 0)
+    final_best_f1 = metrics.get("final_best_f1", 0.0)
+    final_best_acc = metrics.get("final_best_acc", 0.0)
+    final_best_tokens = metrics.get("final_best_tokens", 0)
+    final_population_size = metrics.get("final_population_size", 0)
+    pareto_front_size = metrics.get("pareto_front_size", None)
+    
+    # Métricas por geração (se disponível)
+    generation_times = metrics.get("generation_times", [])
+    
+    # Constrói o markdown
+    with open(summary_path, 'w', encoding='utf-8') as f:
+        f.write("# Resumo da Evolução de Prompts\n\n")
+        
+        # Informações gerais
+        f.write("## Configuração do Experimento\n\n")
+        f.write(f"- **Tarefa**: {task}\n")
+        f.write(f"- **Modo de Otimização**: {objective}\n")
+        f.write(f"- **Modelo Avaliador**: {model_name} (`{model_id}`)\n")
+        f.write(f"- **Estratégia**: {strategy_name}\n")
+        f.write(f"- **Data de Execução**: {datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n\n")
+        
+        # Parâmetros evolutivos
+        f.write("## Parâmetros Evolutivos\n\n")
+        f.write("```yaml\n")
+        f.write(f"population_size: {evolution_params.get('population_size', 'N/A')}\n")
+        f.write(f"max_generations: {evolution_params.get('max_generations', 'N/A')}\n")
+        f.write(f"mutation_rate: {evolution_params.get('mutation_rate', 'N/A')}\n")
+        f.write(f"k_tournament_parents: {evolution_params.get('k_tournament_parents', 'N/A')}\n")
+        f.write(f"stagnation_limit: {evolution_params.get('stagnation_limit', 'N/A')}\n")
+        f.write(f"top_k: {evolution_params.get('top_k', 'N/A')}\n")
+        f.write("```\n\n")
+        
+        # Métricas de tempo
+        f.write("## Métricas de Tempo\n\n")
+        f.write(f"- **Início**: {start_time}\n")
+        f.write(f"- **Fim**: {end_time}\n")
+        f.write(f"- **Duração Total**: {duration_str} ({total_duration:.2f}s)\n")
+        f.write(f"- **Gerações Completadas**: {generations_completed}\n")
+        
+        if generation_times:
+            avg_time = sum(generation_times) / len(generation_times)
+            min_time = min(generation_times)
+            max_time = max(generation_times)
+            f.write(f"- **Tempo Médio por Geração**: {avg_time:.2f}s\n")
+            f.write(f"- **Tempo Mínimo por Geração**: {min_time:.2f}s\n")
+            f.write(f"- **Tempo Máximo por Geração**: {max_time:.2f}s\n")
+        f.write("\n")
+        
+        # Resultados finais
+        f.write("## Resultados Finais\n\n")
+        f.write(f"- **Melhor F1 Score**: {final_best_f1:.4f}\n")
+        f.write(f"- **Melhor Accuracy**: {final_best_acc:.4f}\n")
+        f.write(f"- **Tokens do Melhor Prompt**: {final_best_tokens}\n")
+        f.write(f"- **Tamanho da População Final**: {final_population_size}\n")
+        
+        if pareto_front_size is not None:
+            f.write(f"- **Tamanho da Fronteira de Pareto**: {pareto_front_size}\n")
+        f.write("\n")
+        
+        # Tempos por geração (tabela)
+        if generation_times:
+            f.write("## Tempo por Geração\n\n")
+            f.write("| Geração | Tempo (s) |\n")
+            f.write("|---------|----------|\n")
+            for i, t in enumerate(generation_times):
+                f.write(f"| {i} | {t:.2f} |\n")
+            f.write("\n")
+        
+        # Arquivos de saída
+        f.write("## Arquivos de Saída\n\n")
+        f.write(f"- **Diretório Base**: `{output_dir}`\n")
+        f.write(f"- **Resultados Finais**: `{os.path.join(output_dir, 'final_results.csv')}`\n")
+        
+        if objective == "multiobjetivo":
+            f.write(f"- **Gráfico Pareto**: `{os.path.join(output_dir, 'final_pareto_front.png')}`\n")
+            f.write(f"- **Pareto por Geração**: `{os.path.join(output_dir, 'per_generation_pareto/')}`\n")
+        else:
+            f.write(f"- **Detalhes por Geração**: `{os.path.join(output_dir, 'generations_detail/')}`\n")
+        
+    logger.info(f"Resumo da evolução salvo em {summary_path}")
