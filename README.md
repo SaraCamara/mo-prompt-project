@@ -85,18 +85,43 @@ sabia_api_key: "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
 sabia_url: "https://chat.maritaca.ai/api/chat/inference"
 ```
 
-#### 1. Instalação de dependências e execução
+#### 1. Instalação de dependências
 
 ```bash
 python -m venv .venv
 source .venv/bin/activate
+pip install -r requirements.txt
 ```
 
+#### 2. Configuração inicial (uma vez)
+
 ```bash
+# Configure parallelism and GPU settings
+python -m scripts.setup --auto
+
+# Configure Ollama server
+./scripts/configure_parallel_ollama.sh
+```
+
+#### 3. Verificar configuração
+
+```bash
+python -m scripts.setup --check
+
+# Ou monitore em tempo real
+python -m scripts.watch
+```
+
+#### 4. Executar experimentos
+
+```bash
+source .venv/bin/activate
 python scripts/main.py
 ```
 
-#### 2. Seleção de algoritmo, modelo e estratégia
+ **Dica**: Após a configuração inicial, você pode executar múltiplos experimentos sem reconfigurar. Veja [docs/RUNNING_MULTIPLE_EXPERIMENTS.md](docs/RUNNING_MULTIPLE_EXPERIMENTS.md) para detalhes.
+
+#### 5. Seleção de algoritmo, modelo e estratégia
 
 ```bash
 [>] Selecione estratégia de otimização: 
