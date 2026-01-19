@@ -8,36 +8,60 @@ evolution_params:
   population_size: 10
   stagnation_limit: 3
   k_tournament_parents: 2
-  mutation_rate: 0.1
+  mutation_rate: 0.8
 
-ollama_server_url: http://0.0.0.0:11434/api/chat
+performance:
+  max_workers_ollama: 6
+  max_workers_cloud: 10
+  max_workers_limit: 20
+  warn_above_workers: 8
+
+ollama_server_url: http://localhost:11434/api/chat
 
 evaluators:
-  - name: gemma:2b
-    tipo: ollama
-    endpoint: http://0.0.0.0:11434/api/generate
-    linguagem: pt
-    role: evaluator
-  - name: qwen2.5:7b
-    tipo: ollama
-    endpoint: http://0.0.0.0:11434/api/generate
-    linguagem: pt
-    role: evaluator
-  - name: llama3.1
-    tipo: ollama
-    endpoint: http://0.0.0.0:11434/api/generate
-    linguagem: pt
-    role: evaluator
-  - name: deepseek-r1:7b
-    tipo: ollama
-    endpoint: http://0.0.0.0:11434/api/generate
-    linguagem: pt
-    role: evaluator
-  - name: sabiazinho-3
-    tipo: maritalk
-    endpoint: ${sabia_url}
-    chave_api: ${sabia_api_key}
-    role: evaluator
+- model: deepseek-r1:7b
+  name: deepseek-r1
+  tipo: ollama
+  endpoint: http://localhost:11434/api/generate
+  linguagem: pt
+  role: evaluator
+- model: qwen2.5:7b
+  name: qwen2.5
+  tipo: ollama
+  endpoint: http://localhost:11434/api/generate
+  linguagem: pt
+  role: evaluator
+- model: llama3.1:8b
+  name: llama3.1
+  tipo: ollama
+  endpoint: http://localhost:11434/api/generate
+  linguagem: pt
+  role: evaluator
+- model: deepseek-llm
+  name: deepseek-llm
+  tipo: ollama
+  endpoint: http://localhost:11434/api/generate
+  linguagem: pt
+  role: evaluator
+- model: hf.co/mradermacher/Bode-3.1-8B-Instruct-full-GGUF:Q4_K_M
+  name: bode3.1-8b
+  tipo: ollama
+  endpoint: http://localhost:11434/api/generate
+  linguagem: pt
+  role: evaluator
+- model: gemma:2b
+  name: gemma:2b
+  tipo: ollama
+  endpoint: http://localhost:11434/api/generate
+  linguagem: pt
+  role: evaluator
+- model: sabiazinho-3
+  name: sabiazinho-3
+  tipo: maritalk
+  endpoint: ${sabia_url}
+  chave_api: ${sabia_api_key}
+  role: evaluator
+
 
 generator_imdb:
   name: gpt-4o-mini
@@ -62,8 +86,8 @@ strategies_imdb:
   - name: zero-shot
     template: |
       {prompt_instruction}
-
       Texto: "{text}"
+
   - name: few-shot
     examples: |
       Texto: "Esta versão de Anna Christie está em alemão. Greta Garbo interpreta Anna Christie, mas todos os outros personagens têm atores diferentes da versão em inglês. Ambos foram filmados para trás porque Garbo teve um número de seguidores na Alemanha. É uma boa história e um imperdível para os fãs de Garbo."
@@ -79,6 +103,7 @@ strategies_imdb:
       {prompt_instruction}
 
       {examples}
+
       Texto: "{text}"
 
 generator_squad:
