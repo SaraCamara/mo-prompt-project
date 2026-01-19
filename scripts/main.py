@@ -4,15 +4,28 @@ import os
 import sys
 import logging
 
-from .mono_evolution import run_mono_evolution
-from .multi_evolution import run_multi_evolution
-from .cli_interface import select_from_menu, confirm_action, print_header, print_config_summary
-from .config_data_loader import (
+from .core import run_mono_evolution, run_multi_evolution
+from .utils import (
+    select_from_menu, confirm_action, print_header,
     load_credentials_from_yaml, load_settings, load_dataset,
-    load_initial_prompts, load_population_for_resumption
+    load_initial_prompts, load_population_for_resumption,
+    setup_logging, detect_resumable_run
 )
-from .logger_config import setup_logging
-from .execution_tracker import detect_resumable_run
+
+
+def print_config_summary(config):
+    """Display configuration summary before evolution."""
+    print("\n" + "─" * 60)
+    print("CONFIGURAÇÃO DO EXPERIMENTO")
+    print("─" * 60)
+    print(f"Tarefa: {config['task']}")
+    print(f"Modo: {config['objective']}")
+    model_name = config['evaluators'][0].get('name', 'unknown')
+    print(f"Modelo: {model_name}")
+    strategy_name = config['strategies'][0]['name']
+    print(f"Estratégia: {strategy_name}")
+    print(f"Saída: {config['base_output_dir']}")
+    print("─" * 60 + "\n")
 
 
 def setup_experiment_config(config: dict) -> dict:
@@ -86,7 +99,7 @@ def handle_resumption(base_output_dir: str, is_multiobjective: bool) -> tuple:
         time_str = f"{int(hours)}h {int(minutes)}m {int(seconds)}s"
         
         print("\n" + "="*60)
-        print("🔄 EXECUÇÃO ANTERIOR DETECTADA")
+        print(" EXECUÇÃO ANTERIOR DETECTADA")
         print("="*60)
         print(f"  Última geração completada: {last_gen}")
         print(f"  Tempo acumulado: {time_str}")
