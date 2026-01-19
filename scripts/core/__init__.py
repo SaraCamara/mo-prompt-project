@@ -9,7 +9,7 @@ from .population_manager import (
     generate_unique_offspring,
     select_survivors_nsgaii,
 )
-from .selection_algorithms import tournament_selection, rank_based_selection
+from .selection_algorithms import roulette_wheel_selection, tournament_selection_multiobjective
 
 __all__ = [
     "run_multi_evolution",
@@ -22,6 +22,6 @@ __all__ = [
     "evaluate_population",
     "generate_unique_offspring",
     "select_survivors_nsgaii",
-    "tournament_selection",
-    "rank_based_selection",
+    "roulette_wheel_selection",
+    "tournament_selection_multiobjective",
 ]

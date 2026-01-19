@@ -1,234 +1,187 @@
-# mo-prompt-project
----
+#  MO-Prompt-Project
 
-### Projeto de otimização de prompts com abordagem multiobjetivo e evolutiva
+**Otimização Evolutiva de Prompts com Abordagem Multiobjetivo**
 
-Este projeto investiga a otimização evolutiva de prompts aplicados a tarefas de classificação de sentimento em português, utilizando modelos de linguagem natural (LLMs) e diferentes estratégias de prompting. A função de otimização multiobjetiva aplicada busca maximização da acurácia e minimização da quantidade de tokens utilizados.
+Este projeto investiga a otimização evolutiva de prompts aplicados a tarefas de classificação de sentimento e extração de respostas em português, utilizando modelos de linguagem natural (LLMs) e diferentes estratégias de prompting.
 
-## Estrutura de Pastas
+##  Objetivo
 
-- `config/`: configurações de experimentos e chaves de API
-- `data/`: dataset e prompts iniciais
-- `logs/`: resultados intermediários
-- `results/`: notebooks avaliações dos resultados
-- `scripts/`: scripts principais
-- `.gitignore`: arquivos ignorados
-- `README.md`: descrição do projeto
-- `requirements.txt`: dependências
+A função de otimização multiobjetiva busca:
+-  **Maximizar** acurácia (F1-score)
+-  **Minimizar** quantidade de tokens utilizados
 
-### Resumo Visual da Estrutura
+Suporta dois modos de otimização:
+- **Multiobjetivo (MOP)**: Usa NSGA-II para otimizar F1 vs Tokens simultaneamente
+- **Monoobjetivo (EVO)**: Otimiza apenas F1
+
+##  Estrutura do Projeto
 
 ```
 mo-prompt-project/
-├── config/
-│   ├── credentials.yaml
-│   └── experiment_settings.yaml
-├── data/
-│   ├── imdb_pt_subset.csv
-│   └── initial_prompts.txt
-├── logs/
-│   ├── mop/
-│   │   ├── {model}/
-│   │   │   └── {strategy}/
-│   │   ├── generations/
-│   ├── evo/
-│   │   ├── {model}/
-│   │   │   └── {strategy}/
-├── results/
-│   └── notebooks.ipynb
-├── scripts/
-│   ├── main.py
+├── README.md                          # Este arquivo
+├── CHANGELOG.md                       # Histórico de mudanças
+├── requirements.txt                   # Dependências Python
+│
+├── config/                            # Configurações
+│   ├── credentials.yaml               # Chaves de API
+│   └── experiment_settings.yaml       # Parâmetros dos experimentos
+│
+├── data/                              # Dados e prompts
+│   ├── imdb_pt_subset.csv             # Dataset IMDB português
+│   ├── squad_*.json                   # Dataset SQuAD português
+│   └── initial_prompts_*.txt          # Prompts iniciais
+│
+├── scripts/                           # Código-fonte (estrutura organizada)
+│   ├── main.py                        # ← Entrada principal
+│   ├── core/                          # Algoritmos evolutivos
+│   ├── llm/                           # Clientes LLM e avaliação
+│   ├── ollama/                        # Setup e monitoramento Ollama
+│   ├── utils/                         # Utilidades
+│   └── demo/                          # Demos
+│
+├── logs/                              # Resultados e outputs
+│   └── {task}/{mode}/{model}/{strategy}/
+│
+├── docs/                              # Documentação
+│   ├── README.md                      # Índice de docs
+│   ├── SETUP/                         # Guias de setup
+│   ├── FEATURES/                      # Funcionalidades
+│   ├── GUIDES/                        # Tutoriais
+│   └── ARCHITECTURE/                  # Detalhes técnicos
+│
+└── results/                           # Notebooks de análise
+    ├── analise_resultados.ipynb
+    ├── artigo_analise_resultados.ipynb
+    └── comparativo_multi_evo.ipynb
+```
+
+##  Organização de Scripts
+
+```
+scripts/
+├── main.py                    # ← CLI interativo (entrada)
+│
+├── core/                      # Algoritmos evolutivos
+│   ├── multi_evolution.py
 │   ├── mono_evolution.py
-│   ├── multi_evolution.py  
-│   ├── utils.py
-│   ├── config_data_loader.py
-│   ├── llm_clients.py
 │   ├── evolutionary_operators.py
-│   ├── evaluation_metrics.py
-│   ├── prompt_evaluator.py
-│   ├── selection_algorithms.py
 │   ├── nsga2_algorithms.py
 │   ├── population_manager.py
-│   └── results_saver.py
-├── requirements.txt
-├── README.md
-└── .gitignore
+│   └── selection_algorithms.py
+│
+├── llm/                       # LLM e avaliação
+│   ├── llm_clients.py
+│   ├── prompt_evaluator.py
+│   └── evaluation_metrics.py
+│
+├── ollama/                    # Ollama local
+│   ├── setup.py
+│   ├── watch.py
+│   ├── calculate_optimal_workers.py
+│   ├── configure_parallel_ollama.sh
+│   └── ollama-local.sh
+│
+├── utils/                     # Utilidades
+│   ├── config_data_loader.py
+│   ├── results_saver.py
+│   ├── execution_tracker.py
+│   ├── cli_interface.py
+│   ├── logger_config.py
+│   └── helpers.py
+│
+└── demo/
+    └── demo_progress_bar.py
 ```
 
-### Hiperparâmetros
+##  Quick Start
 
-| Nome              | Valor |
-|-------------------|--------------|
-| `top_k`           | 10           |
-| `max_generations` | 10           |
-| `population_size` | 10           |
-| `stagnation_limit`| 3            |
-| `k_tournament_parents` | 2            |
-
-
----
-
-## Reprodutibilidade
-
-### Replicabilidade:
-Instruções para o estudo ser reproduzido utilizando os mesmos métodos e obtendo resultados semelhantes.
-
-* Arquivo `credential.yaml` não presente no projeto publicado segue o seguinte template em `config/`:
-
-```python
-# Configuração da API do GPT-4o Mini
-openai_api_key: "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
-openai_api_base: "https://api.openai.com/v1"
-
-# Configuração da API do Sabiá
-sabia_api_key: "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
-sabia_url: "https://chat.maritaca.ai/api/chat/inference"
-```
-
-#### 1. Instalação de dependências
+### 1. Instalação
 
 ```bash
-python -m venv .venv
+python3 -m venv .venv
 source .venv/bin/activate
 pip install -r requirements.txt
 ```
 
-#### 2. Configuração inicial (uma vez)
+### 2. Configuração (primeira vez)
 
 ```bash
-# Configure parallelism and GPU settings
-python -m scripts.setup --auto
-
-# Configure Ollama server
-./scripts/configure_parallel_ollama.sh
+python -m scripts.ollama.setup --auto
 ```
 
-#### 3. Verificar configuração
+### 3. Monitorar (em outro terminal)
 
 ```bash
-python -m scripts.setup --check
-
-# Ou monitore em tempo real
-python -m scripts.watch
+python -m scripts.ollama.watch
 ```
 
-#### 4. Executar experimentos
+### 4. Executar
 
 ```bash
-source .venv/bin/activate
 python scripts/main.py
 ```
 
- **Dica**: Após a configuração inicial, você pode executar múltiplos experimentos sem reconfigurar. Veja [docs/RUNNING_MULTIPLE_EXPERIMENTS.md](docs/RUNNING_MULTIPLE_EXPERIMENTS.md) para detalhes.
+## ⚙️ Configuração Requerida
 
-#### 5. Seleção de algoritmo, modelo e estratégia
+### `config/credentials.yaml`
+
+```yaml
+openai_api_key: "sk-..."
+openai_api_base: "https://api.openai.com/v1"
+
+maritalk_api_key: "..."
+maritalk_endpoint: "https://chat.maritaca.ai/api/chat/inference"
+```
+
+### `config/experiment_settings.yaml`
+
+Contém modelos, parâmetros evolutivos, estratégias e datasets.
+
+##  Parâmetros Padrão
+
+| Parâmetro | Valor |
+|-----------|-------|
+| population_size | 10 |
+| max_generations | 10 |
+| mutation_rate | 0.8 |
+| k_tournament | 2 |
+| stagnation_limit | 3 |
+
+##  Documentação
+
+- **[docs/README.md](docs/README.md)** - Índice completo
+- **[docs/SETUP/](docs/SETUP/)** - Guias de configuração
+- **[docs/FEATURES/](docs/FEATURES/)** - Resume, Progress Display
+- **[docs/GUIDES/](docs/GUIDES/)** - Tutoriais práticos
+- **[CHANGELOG.md](CHANGELOG.md)** - Histórico de mudanças
+
+##  Retomar Execução
 
 ```bash
-[>] Selecione estratégia de otimização: 
-0) Monoobjetivo
-1) Multiobjetivo
-
-[>] Selecione modelo avaliador:
-0) gemma:2b
-1) deepseek
-2) sabiazinho
-
-[>] Selecione estratégia de prompt:
-0) Zero-shot
-1) Few-Shot
-2) CoT
-```
----
-
-**Initial Prompts :**
-
-- `GPT-4o Mini` 
-
-```
-Instrução:
-
-Você precisa analisar algumas críticas em um banco de dados sobre filmes.
-Gere 10 prompts para de classificação de sentimentos dessas críticas, conforme os exemplos:
-
-”Determine se a avaliação do filme é positiva ou negativa.”,
-”Classifique a seguinte avaliação como boa ou ruim.”,
-”Analise o sentimento desta frase e decida se é positivo ou negativo.”
-```
----
-
-Instruções para consistência dos resultados em diferentes contextos ou situações. Para aplicação do estudo em outros contextos, tarefas, datasets, modelos de LLM, etc devem se atentar as alterações necessárias em:
-
-* Dataset: repositório `data/` e dataset_path em `experimentals_setting.yaml`.
-* Prompts iniciais: repositório `data/` .
-* Template de prompts: repositório `config/` em `experimentals_setting.yaml`.
-* Modelos LLM usados: repositório `config/` em `experimentals_setting.yaml`, `credentials.yaml` e, repositório `scripts/llm_clients.py` e `scripts/evolutionary_operators.py`.
-
----
-
-## Experimentos
-### Tarefa:
-Classificação binária de sentimento sobre resenhas de filmes (positivo ou negativo) e Extração de Respostas (Question Answering).
-
-#### Testes realizados:
-
-```mermaid
-graph LR;
-
-subgraph Estratégias de Otimização
-    Mono-objetiva
-    Multi-objetiva
-    end
-
-subgraph Modelos de avaliação  
-    gemma:2b
-    sabiazinho-3
-    end
-
-subgraph Estratégias de prompting
-    zero-shot
-    few-shot
-    end
-
-Mono-objetiva & Multi-objetiva ------>  gemma:2b & sabiazinho3 ------> zero-shot & few-shot; 
+python scripts/main.py
 ```
 
----
+O sistema detecta execuções anteriores e oferece retomar da última geração.
 
-**Modelo de Evolução:**
+##  Resultados
 
-- `GPT-4o Mini` (via API) — utilizado como operador de mutação e geração de novos prompts
+Salvos em: `logs/{task}/{mode}/{model}/{strategy}/`
 
----
+```
+├── final_results.csv
+├── final_pareto_front.png
+├── evolution_summary.md
+├── execution_metadata.json
+├── timing_log.csv
+└── per_generation_pareto/
+```
 
-### 1. Mono objetivo - EvoPrompt
+##  Troubleshooting
 
-a. Modelo `gemma:2b`
-
-    `logs/evo/gemma_2b/zero-shot/final_results.csv`
-    `logs/evo/gemma_2b/few-shot/final_results.csv`
-
-b. Modelo `sabiazinho-3`
-
-    `logs/evo/sabiazinho_3/zero-shot/final_results.csv`
-    `logs/evo/sabiazinho_3/few-shot/final_results.csv`
-
-### 2. Multi objetivo - MOPrompt
-
-a. Modelo `gemma:2b`
-
-    `logs/mop/gemma_2b/zero-shot/final_results.csv`
-    `logs/mop/gemma_2b/few-shot/final_results.csv`
-
-b. Modelo `sabiazinho-3`
-
-    `logs/mop/sabiazinho_3/zero-shot/final_results.csv`
-    `logs/mop/sabiazinho_3/few-shot/final_results.csv`
-    `logs/mop/sabiazinho_3/few-shot_top5/final_results.csv`
+- **Timeouts Ollama**: [docs/SETUP/ollama-optimization.md](docs/SETUP/ollama-optimization.md)
+- **Workers**: [docs/SETUP/max-workers.md](docs/SETUP/max-workers.md)
+- **GPU**: [docs/SETUP/gpu-parallelism.md](docs/SETUP/gpu-parallelism.md)
 
 ---
 
-## Análise dos resultados
-
-    `results/artigo_analise_resultados.ipynb`
-
----
+**Última atualização**: Janeiro 2026
